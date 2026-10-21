@@ -4,7 +4,9 @@ import { AuditoriaService } from "../../../src/identidade/auditoria/auditoria.se
 import { ConvitesEmissor } from "../../../src/identidade/convites/convites-emissor.js";
 import { MemoriaAdapter } from "../../../src/identidade/email/memoria.adapter.js";
 import { ProvisionamentoService } from "../../../src/identidade/provisionamento/provisionamento.service.js";
+import { AnonimizacaoService } from "../../../src/identidade/provisionamento/anonimizacao.service.js";
 import { ReenvioConviteDonoService } from "../../../src/identidade/provisionamento/reenvio-convite-dono.service.js";
+import { SessaoService } from "../../../src/identidade/auth/sessao.service.js";
 import { RelogioControlavel } from "../../../src/identidade/relogio.js";
 import { ORIGEM_ADMIN } from "./app.js";
 import { conexaoAdmin } from "./db.js";
@@ -23,6 +25,7 @@ export function criarFerramentasDePlataforma(
   const env = lerEnv({ ...process.env, ADMIN_BASE_URL: ORIGEM_ADMIN });
   const emissor = new ConvitesEmissor(relogio, email, env);
   const auditoria = sobrescrever.auditoria ?? new AuditoriaService(pool);
+  const sessoes = new SessaoService(tenantDb, relogio);
   return {
     tenantDb,
     relogio,
@@ -36,6 +39,12 @@ export function criarFerramentasDePlataforma(
       relogio,
     ),
     reenvio: new ReenvioConviteDonoService(tenantDb, emissor, auditoria),
+    anonimizacao: new AnonimizacaoService(
+      tenantDb,
+      sessoes,
+      auditoria,
+      relogio,
+    ),
   };
 }
 

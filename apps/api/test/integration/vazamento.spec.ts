@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { EuSaida, SessaoSaida } from "@barbearia/contracts";
+import { EquipeSaida, EuSaida, SessaoSaida } from "@barbearia/contracts";
 import { eq } from "drizzle-orm";
 import { usuario } from "../../src/db/schema/index.js";
 import { SenhaService } from "../../src/identidade/seguranca/senha.service.js";
@@ -18,6 +18,8 @@ import {
  * caminho HTTP. Ao acrescentar um endpoint (equipe, recuperação…), acrescente a
  * linha dele aqui: o objetivo é cobrir TODOS os caminhos de acesso existentes.
  */
+
+const ID_INEXISTENTE = "00000000-0000-4000-8000-000000000000";
 
 interface Ator {
   tenantId: string;
@@ -149,6 +151,93 @@ export const ROTAS: RotaCruzada[] = [
         .set("Authorization", `Bearer ${b.token}`);
       expect(deB.status).toBe(200);
       expect(EuSaida.parse(deB.body).barbearia.id).toBe(b.tenantId);
+    },
+  },
+  {
+    nome: "GET /equipe como A lista só a equipe de A",
+    async executar({ t, a, b }) {
+      const r = await t
+        .http()
+        .get("/equipe")
+        .set("Authorization", `Bearer ${a.token}`);
+      expect(r.status).toBe(200);
+      const { usuarios } = EquipeSaida.parse(r.body);
+      expect(usuarios.length).toBeGreaterThan(0);
+      expect(usuarios.every((u) => u.barbeariaId === a.tenantId)).toBe(true);
+      semRastroDe(JSON.stringify(r.body), b);
+    },
+  },
+  {
+    nome: "POST /equipe/{id de B}/desativar como A responde o 404 de um id inexistente e não toca em B",
+    async executar({ t, a, b }) {
+      const deB = await t
+        .http()
+        .post(`/equipe/${b.usuarioId}/desativar`)
+        .set("Authorization", `Bearer ${a.token}`);
+      const inexistente = await t
+        .http()
+        .post(`/equipe/${ID_INEXISTENTE}/desativar`)
+        .set("Authorization", `Bearer ${a.token}`);
+      expect(deB.status).toBe(404);
+      expect(deB.body).toEqual(inexistente.body);
+      expect(
+        (
+          await t
+            .http()
+            .get("/auth/eu")
+            .set("Authorization", `Bearer ${b.token}`)
+        ).status,
+      ).toBe(200);
+    },
+  },
+  {
+    nome: "POST /equipe/{id de B}/reativar como A responde 404",
+    async executar({ t, a, b }) {
+      const r = await t
+        .http()
+        .post(`/equipe/${b.usuarioId}/reativar`)
+        .set("Authorization", `Bearer ${a.token}`);
+      expect(r.status).toBe(404);
+      semRastroDe(JSON.stringify(r.body), b);
+    },
+  },
+  {
+    nome: "POST /equipe/{id de B}/reenviar-convite como A responde 404 e não reenvia nada",
+    async executar({ t, a, b }) {
+      t.email.limpar();
+      const r = await t
+        .http()
+        .post(`/equipe/${b.convidadoId}/reenviar-convite`)
+        .set("Authorization", `Bearer ${a.token}`);
+      expect(r.status).toBe(404);
+      expect(t.email.mensagens).toHaveLength(0);
+      // O convite original de B continua válido.
+      expect(
+        (await t.http().get(`/auth/convites/${b.tokenDoConvite}`)).status,
+      ).toBe(200);
+    },
+  },
+  {
+    nome: "POST /equipe/convites com o e-mail de B responde o mesmo 409 de um e-mail de A, sem revelar B",
+    async executar({ t, a, b }) {
+      const corpo = (email: string) => ({
+        nome: "Alguém",
+        email,
+        papel: "barbeiro",
+      });
+      const deB = await t
+        .http()
+        .post("/equipe/convites")
+        .set("Authorization", `Bearer ${a.token}`)
+        .send(corpo(b.email));
+      const deA = await t
+        .http()
+        .post("/equipe/convites")
+        .set("Authorization", `Bearer ${a.token}`)
+        .send(corpo(a.email));
+      expect(deB.status).toBe(409);
+      expect(deB.body).toEqual(deA.body);
+      semRastroDe(JSON.stringify(deB.body), b);
     },
   },
 ];

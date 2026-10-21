@@ -10,7 +10,7 @@ type Estado =
   | { fase: "erro"; mensagem: string }
   | { fase: "pronto"; eu: EuSaida };
 
-/** Tela provisória após o login; a Equipe a substitui na US4. */
+/** Porta de entrada: donos vão para a Equipe; os demais veem um aviso. */
 export function Inicio() {
   const router = useRouter();
   const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
@@ -19,7 +19,12 @@ export function Inicio() {
     let ativo = true;
     chamar("/auth/eu", { schema: EuSaida })
       .then((eu) => {
-        if (ativo) setEstado({ fase: "pronto", eu });
+        if (!ativo) return;
+        if (eu.usuario.papel === "dono") {
+          router.replace("/equipe");
+          return;
+        }
+        setEstado({ fase: "pronto", eu });
       })
       .catch((erro: unknown) => {
         if (!ativo) return;
@@ -51,7 +56,8 @@ export function Inicio() {
     <>
       <h1>{barbearia.nome}</h1>
       <p>
-        Olá, {usuario.nome} ({usuario.papel === "dono" ? "dono" : "barbeiro"}).
+        Olá, {usuario.nome}. A gestão da barbearia fica com os donos; use o app
+        do barbeiro no celular.
       </p>
       <div className="cartao">
         {barbearia.unidades.map((unidade) => (

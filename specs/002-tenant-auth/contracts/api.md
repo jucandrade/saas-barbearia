@@ -97,13 +97,13 @@ Entrada: `{ "nome": string, "email": string, "papel": "dono" | "barbeiro" }`
 
 | Resultado | Efeito |
 |---|---|
-| `201 { usuario }` | Cria o usuário `convidado` e um convite de 7 dias; envia o e-mail após o commit. Evento `convite_enviado` |
+| `201 { usuario, conviteEnviado }` | Cria o usuário `convidado` e um convite de 7 dias; envia o e-mail após o commit. `conviteEnviado` é `false` se o envio falhou (o convite existe; use "Reenviar convite"). Evento `convite_enviado` |
 | `409 EMAIL_INDISPONIVEL` | E-mail já usado em **qualquer** barbearia (mesma resposta nos dois casos, R13) |
 | `400 DADOS_INVALIDOS` | |
 
 ### `POST /equipe/{id}/reenviar-convite`
 
-Só para usuário `convidado`. Invalida o convite anterior, cria outro de 7 dias e reenvia. `204`. `409 USUARIO_NAO_CONVIDADO` caso contrário. Evento `convite_enviado`.
+Só para usuário `convidado`. Invalida o convite anterior, cria outro de 7 dias e reenvia. `200 { "conviteEnviado": boolean }`. `409 USUARIO_NAO_CONVIDADO` caso contrário. Evento `convite_enviado`.
 
 ### `POST /equipe/{id}/desativar`
 

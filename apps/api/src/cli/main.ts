@@ -1,4 +1,5 @@
 import { NestFactory } from "@nestjs/core";
+import { AnonimizacaoService } from "../identidade/provisionamento/anonimizacao.service.js";
 import { ProvisionamentoService } from "../identidade/provisionamento/provisionamento.service.js";
 import { ReenvioConviteDonoService } from "../identidade/provisionamento/reenvio-convite-dono.service.js";
 import { executarCli } from "./comandos.js";
@@ -14,6 +15,7 @@ async function main(): Promise<void> {
       {
         provisionamento: app.get(ProvisionamentoService),
         reenvio: app.get(ReenvioConviteDonoService),
+        anonimizacao: app.get(AnonimizacaoService),
       },
       {
         out: (mensagem) => {

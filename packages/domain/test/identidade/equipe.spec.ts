@@ -39,6 +39,13 @@ describe("podeDesativar", () => {
     expect(podeDesativar(ana, [ana, dono("caio", "convidado")])).toBe(false);
   });
 
+  it("um dono que ainda não está ativo (convidado ou desativado) sempre pode ser desativado", () => {
+    const convidado = dono("caio", "convidado");
+    expect(podeDesativar(convidado, [convidado])).toBe(true);
+    const desativado = dono("dani", "desativado");
+    expect(podeDesativar(desativado, [desativado])).toBe(true);
+  });
+
   it("é sempre verdadeiro para barbeiro", () => {
     const bia = barbeiro("bia");
     expect(podeDesativar(bia, [bia, dono("ana", "ativo")])).toBe(true);

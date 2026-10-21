@@ -13,6 +13,8 @@ import { ConvitesEmissor } from "./convites/convites-emissor.js";
 import { ConvitesService } from "./convites/convites.service.js";
 import { EmailPort } from "./email/email.port.js";
 import { SmtpAdapter } from "./email/smtp.adapter.js";
+import { EquipeController } from "./equipe/equipe.controller.js";
+import { EquipeService } from "./equipe/equipe.service.js";
 import { FiltroDeErros } from "./http/filtro-de-erros.js";
 import { Relogio, RelogioDoSistema } from "./relogio.js";
 import { SenhaService } from "./seguranca/senha.service.js";
@@ -26,7 +28,7 @@ import { SenhaService } from "./seguranca/senha.service.js";
       useFactory: (env: Env) => [{ ttl: 60_000, limit: env.limitePorMinuto }],
     }),
   ],
-  controllers: [AuthController, ConvitesController],
+  controllers: [AuthController, ConvitesController, EquipeController],
   providers: [
     { provide: Relogio, useClass: RelogioDoSistema },
     { provide: EmailPort, useClass: SmtpAdapter },
@@ -36,6 +38,7 @@ import { SenhaService } from "./seguranca/senha.service.js";
     AuditoriaService,
     ConvitesEmissor,
     ConvitesService,
+    EquipeService,
     { provide: APP_GUARD, useClass: OrigemGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: FiltroDeErros },

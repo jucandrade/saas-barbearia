@@ -61,7 +61,7 @@ pnpm --filter @barbearia/api cli anonimizar-usuario --email "fulano@exemplo.com"
 
 - Exige que o usuário esteja `desativado` (recusa caso contrário, com mensagem pedindo para desativar antes).
 - Recusa o último dono ativo da barbearia.
-- Anonimiza nome e e-mail, apaga o hash de senha, revoga sessões e tokens, define `situacao = anonimizado`. Idempotente: repetir em um usuário já anonimizado termina sem erro.
+- Anonimiza nome (`Usuário anonimizado`) e e-mail (`anonimizado-<id>@invalid`), apaga o hash de senha, revoga sessões e tokens, define `situacao = anonimizado`. **Idempotente**: como o e-mail original deixa de existir, repetir o comando exige o e-mail anonimizado (`--email anonimizado-<id>@invalid`) e termina com código 0 e sem novo evento; o e-mail original, depois de anonimizar, responde "nenhum usuário com este e-mail".
 - Evento `usuario_anonimizado` com `ator_tipo = plataforma`.
 - A saída identifica o usuário só pelo `id`, nunca pelo e-mail.
 

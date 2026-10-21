@@ -6,6 +6,8 @@ import { AuditoriaService } from "../identidade/auditoria/auditoria.service.js";
 import { ConvitesEmissor } from "../identidade/convites/convites-emissor.js";
 import { EmailPort } from "../identidade/email/email.port.js";
 import { SmtpAdapter } from "../identidade/email/smtp.adapter.js";
+import { SessaoService } from "../identidade/auth/sessao.service.js";
+import { AnonimizacaoService } from "../identidade/provisionamento/anonimizacao.service.js";
 import { ProvisionamentoService } from "../identidade/provisionamento/provisionamento.service.js";
 import { ReenvioConviteDonoService } from "../identidade/provisionamento/reenvio-convite-dono.service.js";
 import { Relogio, RelogioDoSistema } from "../identidade/relogio.js";
@@ -29,8 +31,10 @@ import { Relogio, RelogioDoSistema } from "../identidade/relogio.js";
     TenantDb,
     AuditoriaService,
     ConvitesEmissor,
+    SessaoService,
     ProvisionamentoService,
     ReenvioConviteDonoService,
+    AnonimizacaoService,
   ],
 })
 export class CliModule implements OnModuleDestroy {

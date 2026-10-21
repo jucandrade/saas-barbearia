@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import { ProvisionarBarbeariaComando } from "@barbearia/contracts";
 import { ErroPlataforma } from "../identidade/provisionamento/erro-plataforma.js";
+import type { AnonimizacaoService } from "../identidade/provisionamento/anonimizacao.service.js";
 import type { ProvisionamentoService } from "../identidade/provisionamento/provisionamento.service.js";
 import type { ReenvioConviteDonoService } from "../identidade/provisionamento/reenvio-convite-dono.service.js";
 
@@ -12,6 +13,7 @@ export interface SaidaCli {
 export interface DepsCli {
   provisionamento: Pick<ProvisionamentoService, "provisionar">;
   reenvio: Pick<ReenvioConviteDonoService, "reenviar">;
+  anonimizacao: Pick<AnonimizacaoService, "anonimizar">;
 }
 
 type Comando = (args: string[], deps: DepsCli, io: SaidaCli) => Promise<number>;
@@ -106,9 +108,33 @@ const reenviarConviteDono: Comando = (args, deps, io) =>
     return 0;
   });
 
+const anonimizarUsuario: Comando = (args, deps, io) =>
+  protegido(io, async () => {
+    const { values } = parseArgs({
+      args,
+      strict: true,
+      options: { email: { type: "string" } },
+    });
+    if (values.email === undefined) {
+      io.err("Argumento inválido: email");
+      return CODIGO_FALHA;
+    }
+    const resultado = await deps.anonimizacao.anonimizar({
+      email: values.email,
+    });
+    // Identifica o usuário só pelo id: o e-mail é justamente o dado que está sendo apagado.
+    io.out(
+      resultado.jaAnonimizado
+        ? `Usuário ${resultado.usuarioId} já estava anonimizado.`
+        : `Usuário ${resultado.usuarioId} anonimizado.`,
+    );
+    return 0;
+  });
+
 const COMANDOS: Record<string, Comando> = {
   "provisionar-barbearia": provisionarBarbearia,
   "reenviar-convite-dono": reenviarConviteDono,
+  "anonimizar-usuario": anonimizarUsuario,
 };
 
 /** Despacha o comando e devolve o código de saída (≠ 0 em qualquer falha). */

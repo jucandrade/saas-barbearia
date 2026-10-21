@@ -14,7 +14,8 @@ export function podeDesativar(
   usuario: UsuarioEquipe,
   usuariosDaBarbearia: readonly UsuarioEquipe[],
 ): boolean {
-  if (usuario.papel !== "dono") {
+  // Só o dono ativo precisa de proteção: convidado e desativado não contam como dono ativo.
+  if (usuario.papel !== "dono" || usuario.situacao !== "ativo") {
     return true;
   }
   return usuariosDaBarbearia.some(
