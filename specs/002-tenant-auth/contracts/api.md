@@ -1,42 +1,42 @@
 # Contrato: API de identidade
 
-Contrato de referência dos endpoints desta feature. A fonte da verdade são os schemas Zod em `packages/contracts/src/identidade/`; o documento OpenAPI 3.1 é gerado a partir deles (R10). Mensagens ao usuário em português.
+Contrato de referência dos endpoints desta feature. A fonte da verdade são os schemas Zod em `packages/contracts/src/identity/`; o documento OpenAPI 3.1 é gerado a partir deles (R10). Mensagens ao usuário em português.
 
 ## Convenções
 
 - **Formato**: JSON (`application/json`). Datas em ISO 8601 UTC.
-- **Autenticação**: cookie de sessão `HttpOnly` (web) **ou** `Authorization: Bearer <token>` (mobile). Rotas marcadas como **pública** dispensam sessão. Sem sessão válida em rota protegida: `401 SESSAO_INVALIDA`.
-- **Origem** (web): requisições que alteram estado com cookie exigem `Origin` igual a `ADMIN_BASE_URL`; caso contrário `403 ORIGEM_INVALIDA`.
-- **Limite por origem**: rotas marcadas com ⏱ aceitam até 20 requisições por minuto por IP; acima disso `429 MUITAS_REQUISICOES` com `Retry-After`.
+- **Autenticação**: cookie de sessão `HttpOnly` (web) **ou** `Authorization: Bearer <token>` (mobile). Rotas marcadas como **pública** dispensam sessão. Sem sessão válida em rota protegida: `401 INVALID_SESSION`.
+- **Origem** (web): requisições que alteram estado com cookie exigem `Origin` igual a `ADMIN_BASE_URL`; caso contrário `403 INVALID_ORIGIN`.
+- **Limite por origem**: rotas marcadas com ⏱ aceitam até 20 requisições por minuto por IP; acima disso `429 TOO_MANY_REQUESTS` com `Retry-After`.
 - **Erros** (todas as rotas):
 
 ```json
 { "codigo": "CODIGO_ESTAVEL", "mensagem": "Texto para o usuário", "campos": { "email": "E-mail inválido" } }
 ```
 
-`campos` aparece só em `400 DADOS_INVALIDOS`. Códigos são estáveis; mensagens podem mudar.
+`fields` aparece só em `400 INVALID_DATA`. Códigos são estáveis; mensagens podem mudar.
 
-- **Respostas de usuário** nunca incluem `senha_hash`, tokens guardados nem contadores de bloqueio.
+- **Respostas de usuário** nunca incluem `password_hash`, tokens guardados nem contadores de bloqueio.
 
 ```json
-{ "id": "uuid", "nome": "string", "email": "string", "papel": "dono|barbeiro", "situacao": "convidado|ativo|desativado", "barbeariaId": "uuid" }
+{ "id": "uuid", "name": "string", "email": "string", "role": "owner|barber", "status": "invited|active|deactivated", "barbershopId": "uuid" }
 ```
 
 ## Autenticação
 
 ### `POST /auth/login` ⏱ pública
 
-Entrada: `{ "email": string, "senha": string, "cliente": "web" | "mobile" }`
+Entrada: `{ "email": string, "password": string, "client": "web" | "mobile" }`
 
 | Resultado | Corpo |
 |---|---|
-| `200` | `{ "usuario": Usuario, "token"?: string }`. Para `web`, define o cookie de sessão e **não** devolve `token`. Para `mobile`, devolve `token` no corpo e não define cookie |
-| `401 CREDENCIAIS_INVALIDAS` | "E-mail ou senha incorretos, ou acesso temporariamente bloqueado." |
-| `400 DADOS_INVALIDOS` | Formato inválido |
+| `200` | `{ "user": User, "token"?: string }`. Para `web`, define o cookie de sessão e **não** devolve `token`. Para `mobile`, devolve `token` no corpo e não define cookie |
+| `401 INVALID_CREDENTIALS` | "E-mail ou senha incorretos, ou acesso temporariamente bloqueado." |
+| `400 INVALID_DATA` | Formato inválido |
 
-**Indistinguibilidade (FR-014, SC-005)**: e-mail inexistente, senha errada, conta `convidado`, `desativado`, `anonimizado` e conta **bloqueada** (mesmo com a senha correta) respondem exatamente o mesmo `401`, no mesmo formato e com tempo de resposta equivalente. Cada falha de conta existente incrementa `tentativas_falhas`; a 5ª seguida define `bloqueado_ate = agora + 15 min`. Login válido zera o contador.
+**Indistinguibilidade (FR-014, SC-005)**: e-mail inexistente, senha errada, conta `invited`, `deactivated`, `anonymized` e conta **bloqueada** (mesmo com a senha correta) respondem exatamente o mesmo `401`, no mesmo formato e com tempo de resposta equivalente. Cada falha de conta existente incrementa `failed_attempts`; a 5ª seguida define `locked_until = now + 15 min`. Login válido zera o contador.
 
-Eventos: `login_sucesso`, `login_falha`.
+Eventos: `login_success`, `login_failure`.
 
 ### `POST /auth/logout`
 
@@ -44,74 +44,74 @@ Revoga a sessão atual. `204`. Evento `logout`.
 
 ### `GET /auth/eu`
 
-`200 { "usuario": Usuario, "barbearia": { "id", "nome", "unidades": [{ "id", "nome", "fusoHorario" }] } }`. Usado pelo cliente para saber quem está logado e em qual barbearia (e fuso da unidade).
+`200 { "user": User, "barbershop": { "id", "name", "units": [{ "id", "name", "timezone" }] } }`. Usado pelo cliente para saber quem está logado e em qual barbearia (e fuso da unidade).
 
 ## Convite (primeiro acesso)
 
-### `GET /auth/convites/{token}` ⏱ pública
+### `GET /auth/invitations/{token}` ⏱ pública
 
 Permite à tela mostrar o formulário antes de pedir a senha.
 
 | Resultado | Corpo |
 |---|---|
-| `200` | `{ "nome": string, "barbearia": string }` |
-| `410 CONVITE_INVALIDO` | Convite expirado, usado, invalidado ou inexistente (mesma resposta para todos os casos). "Este convite não é mais válido. Peça um novo ao dono da barbearia." |
+| `200` | `{ "name": string, "barbershop": string }` |
+| `410 INVALID_INVITATION` | Convite expirado, usado, invalidado ou inexistente (mesma resposta para todos os casos). "Este convite não é mais válido. Peça um novo ao dono da barbearia." |
 
-### `POST /auth/convites/aceitar` ⏱ pública
+### `POST /auth/invitations/accept` ⏱ pública
 
-Entrada: `{ "token": string, "senha": string, "cliente": "web" | "mobile" }`
+Entrada: `{ "token": string, "password": string, "client": "web" | "mobile" }`
 
 | Resultado | Efeito |
 |---|---|
-| `200 { usuario, token? }` | Valida o convite e a política de senha; grava o hash; `situacao = ativo`; marca o token como usado; inicia sessão (como no login). Evento `convite_aceito` |
-| `410 CONVITE_INVALIDO` | Convite não vigente |
-| `400 SENHA_FRACA` | `campos.senha` com o motivo (curta, comum, igual ao e-mail ou ao nome) |
+| `200 { user, token? }` | Valida o convite e a política de senha; grava o hash; `status = active`; marca o token como usado; inicia sessão (como no login). Evento `invitation_accepted` |
+| `410 INVALID_INVITATION` | Convite não vigente |
+| `400 WEAK_PASSWORD` | `fields.password` com o motivo (curta, comum, igual ao e-mail ou ao nome) |
 
 ## Recuperação de senha
 
-### `POST /auth/senha/esqueci` ⏱ pública
+### `POST /auth/password/forgot` ⏱ pública
 
-Entrada: `{ "email": string }`. **Sempre** `202` com a mesma mensagem ("Se o e-mail estiver cadastrado, enviaremos as instruções."), exista ou não a conta, e com tempo equivalente (FR-014). Se a conta estiver `ativa`, invalida o token anterior, cria um de 1 hora e envia o e-mail após o commit. Evento `senha_recuperacao_solicitada`.
+Entrada: `{ "email": string }`. **Sempre** `202` com a mesma mensagem ("Se o e-mail estiver cadastrado, enviaremos as instruções."), exista ou não a conta, e com tempo equivalente (FR-014). Se a conta estiver `active`, invalida o token anterior, cria um de 1 hora e envia o e-mail após o commit. Evento `password_recovery_requested`.
 
-### `POST /auth/senha/redefinir` ⏱ pública
+### `POST /auth/password/reset` ⏱ pública
 
-Entrada: `{ "token": string, "senha": string }`
-
-| Resultado | Efeito |
-|---|---|
-| `204` | Valida o token e a política de senha; troca o hash; zera `tentativas_falhas` e `bloqueado_ate`; marca o token como usado; **revoga todas as sessões** do usuário (FR-016). Evento `senha_redefinida`. Não inicia sessão: o usuário entra em seguida |
-| `410 TOKEN_INVALIDO` | Token expirado, usado, invalidado ou inexistente |
-| `400 SENHA_FRACA` | Como acima |
-
-## Equipe (papel `dono`)
-
-Todas exigem sessão de `dono`; `barbeiro` recebe `403 SEM_PERMISSAO`. Todas operam só na barbearia da sessão; um `id` de outra barbearia responde `404 NAO_ENCONTRADO`, idêntico a um `id` inexistente (FR-018).
-
-### `GET /equipe`
-
-`200 { "usuarios": Usuario[] }` da própria barbearia, ordenados por nome. Inclui `convidado`, `ativo` e `desativado`; não inclui `anonimizado`.
-
-### `POST /equipe/convites`
-
-Entrada: `{ "nome": string, "email": string, "papel": "dono" | "barbeiro" }`
+Entrada: `{ "token": string, "password": string }`
 
 | Resultado | Efeito |
 |---|---|
-| `201 { usuario, conviteEnviado }` | Cria o usuário `convidado` e um convite de 7 dias; envia o e-mail após o commit. `conviteEnviado` é `false` se o envio falhou (o convite existe; use "Reenviar convite"). Evento `convite_enviado` |
-| `409 EMAIL_INDISPONIVEL` | E-mail já usado em **qualquer** barbearia (mesma resposta nos dois casos, R13) |
-| `400 DADOS_INVALIDOS` | |
+| `204` | Valida o token e a política de senha; troca o hash; zera `failed_attempts` e `locked_until`; marca o token como usado; **revoga todas as sessões** do usuário (FR-016). Evento `password_reset`. Não inicia sessão: o usuário entra em seguida |
+| `410 INVALID_TOKEN` | Token expirado, usado, invalidado ou inexistente |
+| `400 WEAK_PASSWORD` | Como acima |
 
-### `POST /equipe/{id}/reenviar-convite`
+## Equipe (papel `owner`)
 
-Só para usuário `convidado`. Invalida o convite anterior, cria outro de 7 dias e reenvia. `200 { "conviteEnviado": boolean }`. `409 USUARIO_NAO_CONVIDADO` caso contrário. Evento `convite_enviado`.
+Todas exigem sessão de `owner`; `barber` recebe `403 NO_PERMISSION`. Todas operam só na barbearia da sessão; um `id` de outra barbearia responde `404 NOT_FOUND`, idêntico a um `id` inexistente (FR-018).
 
-### `POST /equipe/{id}/desativar`
+### `GET /team`
 
-`204`. Usuário vira `desativado`, **todas as sessões são revogadas** e convites pendentes invalidados. `409 ULTIMO_DONO` se for o último dono ativo (inclusive o próprio usuário que chama). Evento `usuario_desativado`.
+`200 { "users": User[] }` da própria barbearia, ordenados por nome. Inclui `invited`, `active` e `deactivated`; não inclui `anonymized`.
 
-### `POST /equipe/{id}/reativar`
+### `POST /team/invitations`
 
-`204`. Se o usuário tem senha: volta a `ativo` com as mesmas credenciais. Se nunca definiu senha: volta a `convidado` e um novo convite é enviado. `409 USUARIO_NAO_DESATIVADO` caso contrário. Evento `usuario_reativado`.
+Entrada: `{ "name": string, "email": string, "role": "owner" | "barber" }`
+
+| Resultado | Efeito |
+|---|---|
+| `201 { user, invitationSent }` | Cria o usuário `invited` e um convite de 7 dias; envia o e-mail após o commit. `invitationSent` é `false` se o envio falhou (o convite existe; use "Reenviar convite"). Evento `invitation_sent` |
+| `409 EMAIL_UNAVAILABLE` | E-mail já usado em **qualquer** barbearia (mesma resposta nos dois casos, R13) |
+| `400 INVALID_DATA` | |
+
+### `POST /team/{id}/resend-invitation`
+
+Só para usuário `invited`. Invalida o convite anterior, cria outro de 7 dias e reenvia. `200 { "invitationSent": boolean }`. `409 USER_NOT_INVITED` caso contrário. Evento `invitation_sent`.
+
+### `POST /team/{id}/deactivate`
+
+`204`. Usuário vira `deactivated`, **todas as sessões são revogadas** e convites pendentes invalidados. `409 LAST_OWNER` se for o último dono ativo (inclusive o próprio usuário que chama). Evento `user_deactivated`.
+
+### `POST /team/{id}/reactivate`
+
+`204`. Se o usuário tem senha: volta a `active` com as mesmas credenciais. Se nunca definiu senha: volta a `invited` e um novo convite é enviado. `409 USER_NOT_DEACTIVATED` caso contrário. Evento `user_reactivated`.
 
 ## Apoio de banco
 
@@ -119,15 +119,15 @@ Funções `SECURITY DEFINER` (R3), usadas só pela camada de acesso a dados da A
 
 | Função | Colunas devolvidas |
 |---|---|
-| `auth_buscar_usuario_por_email(email)` | `id, tenant_id, papel, situacao, senha_hash, tentativas_falhas, bloqueado_ate` |
-| `auth_buscar_sessao(token_hash)` | `sessao_id, tenant_id, usuario_id, expira_em, ultimo_uso_em, revogada_em, papel, situacao` |
-| `auth_buscar_token_acesso(token_hash, finalidade)` | `id, tenant_id, usuario_id, expira_em, usado_em, invalidado_em` |
+| `auth_find_user_by_email(email)` | `id, tenant_id, role, status, password_hash, failed_attempts, locked_until` |
+| `auth_find_session(token_hash)` | `session_id, tenant_id, user_id, expires_at, last_used_at, revoked_at, role, status` |
+| `auth_find_access_token(token_hash, purpose)` | `id, tenant_id, user_id, expires_at, used_at, invalidated_at` |
 
 ## Cobertura de requisitos
 
 | Requisito | Onde |
 |---|---|
-| FR-006, FR-009 | Convites, `EMAIL_INDISPONIVEL`, convite de 7 dias |
+| FR-006, FR-009 | Convites, `EMAIL_UNAVAILABLE`, convite de 7 dias |
 | FR-007, FR-008 | Equipe: convidar, desativar, reativar |
 | FR-010 a FR-016 | Autenticação, recuperação, limite por origem |
 | FR-017, FR-018, FR-019 | `404` idêntico entre barbearias; RLS (data-model) |

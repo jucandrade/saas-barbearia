@@ -34,12 +34,12 @@ Primeira feature com banco de dados: cria a base multi-tenant (barbearia → uni
 
 | Princípio / Restrição | Status | Observação |
 |---|---|---|
-| I. Multi-tenancy | ✅ | Hierarquia barbearia → unidade desde a primeira migration; `tenant_id` e RLS com `FORCE` em todas as tabelas; API sem `BYPASSRLS`, contexto por transação, falha fechada; suíte automatizada de vazamento entre tenants ([R2](research.md#r2-isolamento-por-rls-e-papéis-do-banco), [R14](research.md#r14-testes)). O isolamento atende, na feature, a "toda assinatura nasce vinculada à unidade" apenas por estrutura: não há assinatura aqui. Exceção documentada em Complexity Tracking: `evento_seguranca.tenant_id` nulo. |
+| I. Multi-tenancy | ✅ | Hierarquia barbearia → unidade desde a primeira migration; `tenant_id` e RLS com `FORCE` em todas as tabelas; API sem `BYPASSRLS`, contexto por transação, falha fechada; suíte automatizada de vazamento entre tenants ([R2](research.md#r2-isolamento-por-rls-e-papéis-do-banco), [R14](research.md#r14-testes)). O isolamento atende, na feature, a "toda assinatura nasce vinculada à unidade" apenas por estrutura: não há assinatura aqui. Exceção documentada em Complexity Tracking: `security_events.tenant_id` nulo. |
 | II. Integridade financeira | N/A | Sem valores monetários nem ledger. A trilha de auditoria é imutável por permissão e gatilho, seguindo o espírito do princípio. |
 | III. Regras parametrizáveis | N/A | As regras de senha, sessão e bloqueio são de segurança, não de remuneração; ficam como constantes nomeadas no domínio, ajustáveis por configuração de ambiente quando necessário. |
 | IV. Domínio puro e test-first | ✅ | Regras em funções puras em `packages/domain`, sem relógio (hora como parâmetro), com testes escritos antes ([R12](research.md#r12-regras-puras-em-packagesdomain)). Sem golden test: não há cálculo financeiro. |
 | V. Contratos primeiro | ✅ | Schemas Zod em `packages/contracts` antes da implementação; mesmos schemas validam a API e tipam os clientes; OpenAPI 3.1 gerado a partir deles ([R10](research.md#r10-contratos), [contracts/api.md](contracts/api.md)). Testes de contrato por endpoint. |
-| VI. Monólito modular | ✅ | Um único módulo `IdentidadeModule` (bounded context "Identidade e Tenancy"); nenhum acesso a tabelas de outros contextos. |
+| VI. Monólito modular | ✅ | Um único módulo `IdentityModule` (bounded context "Identidade e Tenancy"); nenhum acesso a tabelas de outros contextos. |
 | VII. Confiabilidade de integrações e jobs | ✅ (com nota) | Sem webhooks nem jobs. O envio de e-mail depende de uma transação; adotado **envio após o commit com reenvio idempotente** como equivalente ao outbox para esta única mensagem de baixo risco. Registrado em Complexity Tracking. Toda operação de gestão e de acesso grava evento com autor e horário. |
 | VIII. Mobile-first e simplicidade | ✅ | Telas organizadas por tarefa (Entrar, Equipe); login do barbeiro no celular com sessão de 30 dias para não atrapalhar o balcão. |
 | IX. Privacidade e LGPD | ✅ | Só nome e e-mail do usuário; senha com Argon2id; sem IP, e-mail ou nome em logs e eventos; anonimização irreversível por comando da equipe do produto (FR-024); nenhum dado de pagamento. |
@@ -64,7 +64,7 @@ specs/002-tenant-auth/
 ├── data-model.md        # Fase 1: tabelas, RLS, transições, funções de banco
 ├── quickstart.md        # Fase 1: roteiro de validação ponta a ponta
 ├── contracts/
-│   ├── api.md           # Contrato dos endpoints de identidade
+│   ├── api.md           # Contrato dos endpoints de identity
 │   └── commands.md      # Comandos novos, comandos da equipe do produto, mudança na CI
 ├── checklists/
 │   └── requirements.md  # Qualidade da spec
@@ -86,41 +86,41 @@ specs/002-tenant-auth/
 │   │   ├── src/
 │   │   │   ├── config/env.ts                # leitura e validação (Zod) das variáveis
 │   │   │   ├── db/
-│   │   │   │   ├── schema/                  # barbearia, unidade, usuario, token-acesso, sessao, evento-seguranca
+│   │   │   │   ├── schema/                  # barbershop, unit, user, access-token, session, security-event
 │   │   │   │   ├── tenant-db.ts             # transação com app.tenant_id (falha fechada)
 │   │   │   │   └── migrate.ts               # garante app_runtime e aplica migrations
-│   │   │   ├── identidade/                  # IdentidadeModule
+│   │   │   ├── identity/                  # IdentityModule
 │   │   │   │   ├── auth/                    # login, logout, eu, guard, sessão
-│   │   │   │   ├── convites/                # aceitar, validar
-│   │   │   │   ├── recuperacao/             # esqueci, redefinir
-│   │   │   │   ├── equipe/                  # listar, convidar, reenviar, desativar, reativar
+│   │   │   │   ├── invitations/                # accept, validate
+│   │   │   │   ├── recovery/             # forgot, reset
+│   │   │   │   ├── team/                  # list, invite, resend, deactivate, reactivate
 │   │   │   │   ├── auditoria/               # registro de eventos de segurança
 │   │   │   │   └── email/                   # EmailPort, adaptador SMTP, adaptador em memória
-│   │   │   ├── cli/                         # provisionar-barbearia, reenviar-convite-dono, anonimizar-usuario
-│   │   │   └── app.module.ts                # + IdentidadeModule
+│   │   │   ├── cli/                         # provision-barbershop, resend-owner-invitation, anonymize-user
+│   │   │   └── app.module.ts                # + IdentityModule
 │   │   └── test/
-│   │       ├── integration/contract/        # um teste por endpoint (exigem banco)
-│   │       └── integration/                 # fluxos, RLS, vazamento entre tenants, logs e auditoria
+│   │       ├── integration/contract/        # um test por endpoint (exigem database)
+│   │       └── integration/                 # fluxos, RLS, leak entre tenants, logs e audit
 │   ├── admin/app/
-│   │   ├── entrar/                          # login
-│   │   ├── convite/[token]/                 # aceitar convite
+│   │   ├── signIn/                          # login
+│   │   ├── invitation/[token]/                 # accept invitation
 │   │   ├── esqueci-senha/                   # solicitar recuperação
-│   │   ├── redefinir-senha/[token]/         # nova senha
+│   │   ├── reset-password/[token]/         # nova password
 │   │   └── equipe/                          # lista e ações do dono (tela inicial após o login)
 │   └── barber/app/
-│       └── entrar.tsx                       # login e sair, token em expo-secure-store
+│       └── signIn.tsx                       # login e signOut, token em expo-secure-store
 └── packages/
     ├── domain/
-    │   ├── src/identidade/                  # validarSenha, duracaoSessao, bloqueio de login,
+    │   ├── src/identity/                  # validatePassword, sessionDuration, lockout de login,
     │   │                                    # vigência de tokens, último dono, normalizarEmail
     │   └── test/identidade/                 # escritos antes da implementação
     └── contracts/
-        ├── src/identidade/                  # schemas Zod + registro de rotas
-        ├── scripts/openapi.ts               # gera OpenAPI 3.1 a partir do registro
-        └── test/                            # os schemas aceitam e recusam o esperado
+        ├── src/identity/                  # schemas Zod + record de routes
+        ├── scripts/openapi.ts               # gera OpenAPI 3.1 a partir do record
+        └── test/                            # os schemas aceitam e recusam o expected
 ```
 
-**Structure Decision**: Mantém o layout da constitution, sem espaços novos. O acesso a dados fica dentro de `apps/api` (e não em um pacote) porque só a API fala com o banco, o que também preserva a regra de que nenhum módulo acessa tabelas de outro contexto. A pasta `identidade/` é o bounded context; os demais contextos nascerão em pastas irmãs nas features próprias.
+**Structure Decision**: Mantém o layout da constitution, sem espaços novos. O acesso a dados fica dentro de `apps/api` (e não em um pacote) porque só a API fala com o banco, o que também preserva a regra de que nenhum módulo acessa tabelas de outro contexto. A pasta `identity/` é o bounded context; os demais contextos nascerão em pastas irmãs nas features próprias.
 
 ## Complexity Tracking
 
@@ -130,4 +130,4 @@ specs/002-tenant-auth/
 | E-mail enviado após o commit, sem outbox formal (princípio VII) | Um único e-mail de baixo risco por operação, com reenvio disponível ao dono | Tabela outbox e job de despacho: exigem fila e rotina de retentativa que só fazem sentido com jobs reais (princípio X) |
 | Limite por origem em memória (`@nestjs/throttler`) | Uma única instância da API nesta fase | Armazenamento no Redis: infraestrutura e testes extras sem necessidade hoje; troca prevista ao escalar ([R8](research.md#r8-bloqueio-de-login-e-limite-de-requisições)) |
 | Conexão administrativa nos comandos da equipe do produto | Provisionar cria o tenant e anonimizar age sobre um usuário achado por e-mail, antes de haver contexto | Rodar esses comandos como `app_runtime`: não consegue criar barbearia nem achar usuário sem contexto. Mitigação: contexto explícito (R2) e testes com dono não superusuário |
-| `evento_seguranca.tenant_id` nulo | Falhas de login de e-mail inexistente não têm barbearia e precisam constar na trilha | Descartar o evento: perde sinal de ataque. Mitigação: a política de leitura esconde esses eventos de toda barbearia e eles não têm dado pessoal |
+| `security_events.tenant_id` nulo | Falhas de login de e-mail inexistente não têm barbearia e precisam constar na trilha | Descartar o evento: perde sinal de ataque. Mitigação: a política de leitura esconde esses eventos de toda barbearia e eles não têm dado pessoal |
