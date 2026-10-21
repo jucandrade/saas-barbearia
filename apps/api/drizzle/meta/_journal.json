@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792613102065,
+      "tag": "0000_parched_sauron",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792613142803,
+      "tag": "0001_rls-e-permissoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792613143835,
+      "tag": "0002_funcoes-de-autenticacao",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792613144865,
+      "tag": "0003_gatilhos-de-integridade",
+      "breakpoints": true
+    }
+  ]
+}

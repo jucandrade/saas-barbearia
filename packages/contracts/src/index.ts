@@ -1,1 +1,1 @@
-export {};
+export * from "./identidade/comum.js";
