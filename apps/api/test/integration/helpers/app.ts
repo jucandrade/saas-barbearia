@@ -1,4 +1,4 @@
-import type { INestApplication, Type } from "@nestjs/common";
+import type { INestApplication, LoggerService, Type } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AppModule } from "../../../src/app.module.js";
@@ -30,7 +30,7 @@ export interface TestApp {
   close: () => Promise<void>;
 }
 
-export interface OptionsApp {
+export interface AppOptions {
   /** Extra modules, for example test controllers. */
   controllers?: Type[];
   clock?: ControllableClock;
@@ -38,13 +38,44 @@ export interface OptionsApp {
   limitPerMinute?: number;
   /** Minimum response time of `forgot` (0 in tests, except the one that measures time). */
   recoveryFloorMs?: number;
+  /** Replaces the Nest logger, for tests that inspect what gets logged. */
+  logger?: LoggerService;
+}
+
+/** Logger that keeps every line in memory, so tests can check what was logged. */
+export class CapturingLogger implements LoggerService {
+  readonly lines: string[] = [];
+
+  private add(level: string, message: unknown, params: unknown[]): void {
+    this.lines.push(
+      [level, message, ...params]
+        .map((part) => (typeof part === "string" ? part : JSON.stringify(part)))
+        .join(" "),
+    );
+  }
+
+  log(message: unknown, ...params: unknown[]): void {
+    this.add("log", message, params);
+  }
+  error(message: unknown, ...params: unknown[]): void {
+    this.add("error", message, params);
+  }
+  warn(message: unknown, ...params: unknown[]): void {
+    this.add("warn", message, params);
+  }
+  debug(message: unknown, ...params: unknown[]): void {
+    this.add("debug", message, params);
+  }
+  verbose(message: unknown, ...params: unknown[]): void {
+    this.add("verbose", message, params);
+  }
 }
 
 /**
  * Boots the full Nest app on the test database, with in-memory e-mail, a controllable clock
  * and a cheap password hash, so tests are fast and deterministic.
  */
-export async function createApp(options: OptionsApp = {}): Promise<TestApp> {
+export async function createApp(options: AppOptions = {}): Promise<TestApp> {
   const clock = options.clock ?? new ControllableClock();
   const email = options.email ?? new MemoryAdapter();
   const env = readEnv({
@@ -58,7 +89,7 @@ export async function createApp(options: OptionsApp = {}): Promise<TestApp> {
     RECOVERY_FLOOR_MS: String(options.recoveryFloorMs ?? 0),
   });
 
-  const modulo = await Test.createTestingModule({
+  const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
   })
@@ -70,7 +101,10 @@ export async function createApp(options: OptionsApp = {}): Promise<TestApp> {
     .useValue(email)
     .compile();
 
-  const app = modulo.createNestApplication();
+  const app = moduleRef.createNestApplication();
+  if (options.logger !== undefined) {
+    app.useLogger(options.logger);
+  }
   await app.init();
 
   return {

@@ -124,6 +124,12 @@ export default [
     languageOptions: typedLanguageOptions,
   },
 
+  // Node scripts (.mjs) run in Node: they have its globals.
+  {
+    files: ["**/*.mjs"],
+    languageOptions: { globals: globals.node },
+  },
+
   // Loose JS files do not go through the TypeScript project.
   {
     files: ["**/*.{js,mjs,cjs}"],
