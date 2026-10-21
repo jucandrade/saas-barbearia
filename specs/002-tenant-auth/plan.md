@@ -45,7 +45,7 @@ Primeira feature com banco de dados: cria a base multi-tenant (barbearia → uni
 | IX. Privacidade e LGPD | ✅ | Só nome e e-mail do usuário; senha com Argon2id; sem IP, e-mail ou nome em logs e eventos; anonimização irreversível por comando da equipe do produto (FR-024); nenhum dado de pagamento. |
 | X. Simplicidade e entrega por fases | ✅ | Sem Redis, fila, biblioteca de CLI, de OpenAPI ou de contexto assíncrono; sem gestão de unidades, papéis extras ou login social; telas no mínimo. |
 | Restrições técnicas (TS strict, NestJS, PostgreSQL com RLS, Next.js, Expo, datas em UTC com fuso por unidade) | ✅ | Seguidas: `timestamptz`, fuso IANA na unidade. |
-| Decisão aberta "ORM e migrations" | ✅ | Resolvida pelo [ADR 0002](../../docs/adr/0002-orm-e-migrations.md) (status Proposto até a revisão deste plan). |
+| Decisão aberta "ORM e migrations" | ✅ | Resolvida pelo [ADR 0002](../../docs/adr/0002-orm-e-migrations.md) (status Aceito). |
 | Decisão aberta "Gateway de pagamento" | N/A | Não usada. |
 | Decisões abertas "Hospedagem, CD, observabilidade" | N/A | Continuam abertas; o provedor de e-mail de produção depende delas e fica para essa feature (o código usa SMTP genérico). |
 | Fluxo: PR com testes, lint e type-check | ✅ | A CI ganha as etapas `Migrate` e `Integration test` no job `linux` ([contracts/commands.md](contracts/commands.md)). |

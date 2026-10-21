@@ -1,6 +1,6 @@
 # ADR 0002: Drizzle ORM e drizzle-kit para acesso a dados e migrations
 
-- **Status**: Proposto (confirmar na revisão do plan da feature 002)
+- **Status**: Aceito
 - **Data**: 2026-10-21
 - **Feature**: [002-tenant-auth](../../specs/002-tenant-auth/plan.md)
 
