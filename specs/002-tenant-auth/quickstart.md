@@ -32,6 +32,7 @@ pnpm --filter @barbearia/api cli provisionar-barbearia --nome "Barbearia Piloto"
 | Repetir o comando com o mesmo e-mail | Falha com "E-mail indisponível"; nada novo criado |
 | `--fuso "Marte/Olimpo"` | Falha por fuso inexistente; nada criado |
 | Usar o link do convite uma segunda vez | "Este convite não é mais válido" |
+| Convite do dono expirado (ou e-mail digitado errado) | `cli reenviar-convite-dono --email ...` (com `--novo-email` se for o caso) gera um convite novo; o link antigo deixa de valer |
 | Definir a senha `12345678` ou `abc` | Recusada com o motivo (comum / curta) |
 
 ## Cenário 3: entrar, sair e bloqueio (US2, SC-005)

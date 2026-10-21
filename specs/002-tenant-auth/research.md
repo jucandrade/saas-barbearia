@@ -16,8 +16,10 @@ Decisões técnicas da feature 002. A spec descreve o quê; aqui ficam o como e 
 
 | Papel | Uso | Permissões |
 |---|---|---|
-| `barbearia` (dono do esquema, já existente em dev) | Migrations e comandos da equipe do produto (provisionar, anonimizar) | Dono das tabelas; contorna a RLS por ser dono |
+| `barbearia` (dono do esquema, já existente em dev) | Migrations e comandos da equipe do produto | Dono das tabelas. Em dev é superusuário (ignora a RLS); em produção pode não ser. Por isso nenhum comando depende de ignorar a RLS: todos definem `app.tenant_id` explicitamente |
 | `app_runtime` | API em execução | `SELECT/INSERT/UPDATE` conforme a tabela; **não** é dono, sem `BYPASSRLS`; sem `DELETE` nas tabelas de auditoria |
+
+- **Comandos da equipe do produto**: usam a conexão administrativa, mas sempre dentro de uma transação com `set_config('app.tenant_id', <uuid>, true)`. *Provisionar*: o UUID da barbearia é gerado na aplicação antes dos `INSERT`, e o contexto é definido com ele antes de criar barbearia, unidade e dono. *Anonimizar* e *reenviar convite de dono*: o usuário é achado com `auth_buscar_usuario_por_email` e só então o contexto é aberto com o `tenant_id` devolvido. O comportamento é o mesmo com dono superusuário (dev) ou não (produção); o harness de testes usa um dono não superusuário para provar isso.
 
 - Todas as tabelas de negócio têm `tenant_id` e `ENABLE` + `FORCE ROW LEVEL SECURITY`.
 - Política padrão: `tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid`, em `USING` e `WITH CHECK`. Sem contexto, o valor é `NULL` e **nenhuma linha** é visível nem gravável (falha fechada, FR-017).
@@ -99,6 +101,7 @@ Cada uma devolve só as colunas necessárias para autenticar (identificador, ten
 
 - `pnpm --filter @barbearia/api cli provisionar-barbearia --nome ... --unidade ... --fuso ... --dono-nome ... --dono-email ...`
 - `pnpm --filter @barbearia/api cli anonimizar-usuario --email ...`
+- `pnpm --filter @barbearia/api cli reenviar-convite-dono --email ... [--novo-email ...]`: o convite do primeiro dono não pode ser reenviado por um dono autenticado (ele ainda não entrou), então a equipe do produto o reenvia ou corrige o e-mail enquanto o convite não foi aceito.
 - Usam `util.parseArgs` do Node e o contexto de aplicação do Nest, sem biblioteca nova de CLI.
 - Os eventos de segurança desses comandos têm `ator_tipo = plataforma`.
 

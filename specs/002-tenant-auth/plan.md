@@ -26,7 +26,7 @@ Primeira feature com banco de dados: cria a base multi-tenant (barbearia → uni
 
 **Constraints**: RLS com falha fechada: sem contexto de tenant nenhuma linha é lida nem escrita (FR-017); respostas de login, convite e recuperação indistinguíveis quanto à existência do e-mail, em conteúdo e em tempo (FR-014); nenhum dado pessoal ou IP em logs ou eventos (FR-020, FR-021); `pnpm test` da raiz sem exigir banco (continuidade da 001); comandos iguais em PowerShell e bash.
 
-**Scale/Scope**: 6 tabelas, 3 funções de banco, 14 endpoints, 2 comandos da equipe do produto, 4 telas no admin e 1 no app do barbeiro, 11 tipos de evento de segurança. Dezenas de barbearias e centenas de usuários no horizonte da fase.
+**Scale/Scope**: 6 tabelas, 3 funções de banco, 12 endpoints, 3 comandos da equipe do produto, 5 telas no admin e 1 no app do barbeiro, 11 tipos de evento de segurança. Dezenas de barbearias e centenas de usuários no horizonte da fase.
 
 ## Constitution Check
 
@@ -34,7 +34,7 @@ Primeira feature com banco de dados: cria a base multi-tenant (barbearia → uni
 
 | Princípio / Restrição | Status | Observação |
 |---|---|---|
-| I. Multi-tenancy | ✅ | Hierarquia barbearia → unidade desde a primeira migration; `tenant_id` e RLS com `FORCE` em todas as tabelas; API sem `BYPASSRLS`, contexto por transação, falha fechada; suíte automatizada de vazamento entre tenants ([R2](research.md#r2-isolamento-por-rls-e-papéis-do-banco), [R14](research.md#r14-testes)). O isolamento atende, na feature, a "toda assinatura nasce vinculada à unidade" apenas por estrutura: não há assinatura aqui. |
+| I. Multi-tenancy | ✅ | Hierarquia barbearia → unidade desde a primeira migration; `tenant_id` e RLS com `FORCE` em todas as tabelas; API sem `BYPASSRLS`, contexto por transação, falha fechada; suíte automatizada de vazamento entre tenants ([R2](research.md#r2-isolamento-por-rls-e-papéis-do-banco), [R14](research.md#r14-testes)). O isolamento atende, na feature, a "toda assinatura nasce vinculada à unidade" apenas por estrutura: não há assinatura aqui. Exceção documentada em Complexity Tracking: `evento_seguranca.tenant_id` nulo. |
 | II. Integridade financeira | N/A | Sem valores monetários nem ledger. A trilha de auditoria é imutável por permissão e gatilho, seguindo o espírito do princípio. |
 | III. Regras parametrizáveis | N/A | As regras de senha, sessão e bloqueio são de segurança, não de remuneração; ficam como constantes nomeadas no domínio, ajustáveis por configuração de ambiente quando necessário. |
 | IV. Domínio puro e test-first | ✅ | Regras em funções puras em `packages/domain`, sem relógio (hora como parâmetro), com testes escritos antes ([R12](research.md#r12-regras-puras-em-packagesdomain)). Sem golden test: não há cálculo financeiro. |
@@ -96,11 +96,11 @@ specs/002-tenant-auth/
 │   │   │   │   ├── equipe/                  # listar, convidar, reenviar, desativar, reativar
 │   │   │   │   ├── auditoria/               # registro de eventos de segurança
 │   │   │   │   └── email/                   # EmailPort, adaptador SMTP, adaptador em memória
-│   │   │   ├── cli/                         # provisionar-barbearia, anonimizar-usuario
+│   │   │   ├── cli/                         # provisionar-barbearia, reenviar-convite-dono, anonimizar-usuario
 │   │   │   └── app.module.ts                # + IdentidadeModule
 │   │   └── test/
-│   │       ├── contract/                    # um teste por endpoint
-│   │       └── integration/                 # fluxos, RLS e vazamento entre tenants
+│   │       ├── integration/contract/        # um teste por endpoint (exigem banco)
+│   │       └── integration/                 # fluxos, RLS, vazamento entre tenants, logs e auditoria
 │   ├── admin/app/
 │   │   ├── entrar/                          # login
 │   │   ├── convite/[token]/                 # aceitar convite
@@ -129,3 +129,5 @@ specs/002-tenant-auth/
 | Três funções `SECURITY DEFINER` que contornam a RLS | O login precisa achar usuário, sessão e token **antes** de conhecer o tenant; o e-mail é único no sistema inteiro | Papel com `BYPASSRLS` para o login: um erro de consulta viraria vazamento entre barbearias. As funções são pequenas, fixas e cobertas por teste |
 | E-mail enviado após o commit, sem outbox formal (princípio VII) | Um único e-mail de baixo risco por operação, com reenvio disponível ao dono | Tabela outbox e job de despacho: exigem fila e rotina de retentativa que só fazem sentido com jobs reais (princípio X) |
 | Limite por origem em memória (`@nestjs/throttler`) | Uma única instância da API nesta fase | Armazenamento no Redis: infraestrutura e testes extras sem necessidade hoje; troca prevista ao escalar ([R8](research.md#r8-bloqueio-de-login-e-limite-de-requisições)) |
+| Conexão administrativa nos comandos da equipe do produto | Provisionar cria o tenant e anonimizar age sobre um usuário achado por e-mail, antes de haver contexto | Rodar esses comandos como `app_runtime`: não consegue criar barbearia nem achar usuário sem contexto. Mitigação: contexto explícito (R2) e testes com dono não superusuário |
+| `evento_seguranca.tenant_id` nulo | Falhas de login de e-mail inexistente não têm barbearia e precisam constar na trilha | Descartar o evento: perde sinal de ataque. Mitigação: a política de leitura esconde esses eventos de toda barbearia e eles não têm dado pessoal |

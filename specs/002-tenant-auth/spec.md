@@ -17,6 +17,7 @@
 - Q: Por quantos dias o link de convite continua válido antes de expirar? → A: 7 dias. O link de recuperação de senha vale 1 hora (adotado como padrão, não contestado).
 - Q: Qual o tamanho mínimo da senha que o usuário pode definir? → A: 8 caracteres, além da rejeição de senhas óbvias.
 - Q: Depois de quantas tentativas de login erradas seguidas a conta é bloqueada, e por quanto tempo? → A: 5 tentativas seguidas, bloqueio de 15 minutos.
+- Q: Qual o limite por origem? → A: 20 requisições por minuto por IP nas rotas públicas de acesso (padrão adotado no plan, não contestado).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -148,7 +149,7 @@ Um usuário que esqueceu a senha consegue definir uma nova de forma segura, sem 
 - **FR-012**: O sistema MUST identificar, a cada requisição autenticada, o usuário, o papel e a barbearia, e MUST negar acesso a áreas protegidas sem sessão válida.
 - **FR-013**: Sessões MUST expirar após inatividade: **12 horas para o dono e 30 dias para o barbeiro**. O usuário MUST poder encerrar a própria sessão (sair).
 - **FR-014**: Mensagens de falha de login e de recuperação de senha MUST NOT revelar se um e-mail está cadastrado.
-- **FR-015**: Tentativas repetidas de login com falha MUST ser limitadas por conta e por origem, com bloqueio de 15 minutos após 5 tentativas seguidas com falha na mesma conta.
+- **FR-015**: Tentativas repetidas de login com falha MUST ser limitadas: (a) **por conta**, com bloqueio de 15 minutos após 5 tentativas seguidas com falha na mesma conta; (b) **por origem**, com no máximo 20 requisições por minuto por IP nas rotas públicas de acesso (login, convite e recuperação de senha), acima do que a resposta é "muitas requisições".
 - **FR-016**: O sistema MUST permitir recuperar a senha por link de uso único e com validade de 1 hora; trocar a senha MUST encerrar as demais sessões do usuário.
 
 **Isolamento entre barbearias**

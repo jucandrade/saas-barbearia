@@ -70,7 +70,7 @@ A "ao menos uma unidade" é garantida pela operação de provisionamento, que cr
 
 ## token_acesso
 
-Convite (primeiro acesso) e recuperação de senha (R6).
+Convite (primeiro acesso) e recuperação de senha (R6). Corresponde às entidades **Convite** (`finalidade = convite`) e **Credencial de recuperação** (`finalidade = recuperacao`) da spec.
 
 | Campo | Tipo | Regras |
 |---|---|---|
