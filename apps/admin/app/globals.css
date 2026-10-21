@@ -110,3 +110,24 @@ button:disabled {
   border-radius: 0.75rem;
   background: var(--superficie);
 }
+
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--borda);
+}
+
+button.secundario {
+  width: auto;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  border: 1px solid var(--borda);
+  background: transparent;
+  color: var(--texto);
+}

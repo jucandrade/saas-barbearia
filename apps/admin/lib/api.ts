@@ -1,7 +1,8 @@
 import type { z } from "zod";
 import { Erro } from "@barbearia/contracts";
 
-const BASE = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:3000";
+// O Next só inlina variáveis públicas lidas com acesso por ponto.
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 /** Erro devolvido pela API no formato `{ codigo, mensagem, campos? }`. */
 export class ErroDaApi extends Error {

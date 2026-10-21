@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Usuario } from "./comum.js";
+import { Cliente, Email, Usuario } from "./comum.js";
 
 export const UnidadeSaida = z.object({
   id: z.uuid(),
@@ -18,3 +18,11 @@ export const EuSaida = z.object({
   }),
 });
 export type EuSaida = z.infer<typeof EuSaida>;
+
+/** `POST /auth/login`. A resposta de sucesso é `SessaoSaida` (convite.ts). */
+export const LoginEntrada = z.object({
+  email: Email,
+  senha: z.string().min(1).max(256),
+  cliente: Cliente,
+});
+export type LoginEntrada = z.infer<typeof LoginEntrada>;

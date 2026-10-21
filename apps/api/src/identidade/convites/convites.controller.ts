@@ -7,7 +7,9 @@ import {
   Param,
   Post,
   Res,
+  UseGuards,
 } from "@nestjs/common";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import {
   AceitarConviteEntrada,
   type ConviteInfo,
@@ -21,6 +23,7 @@ import type { RespostaHttp } from "../http/tipos-http.js";
 import { ConvitesService } from "./convites.service.js";
 
 @Publica()
+@UseGuards(ThrottlerGuard)
 @Controller("auth/convites")
 export class ConvitesController {
   constructor(

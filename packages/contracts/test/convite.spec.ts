@@ -92,3 +92,30 @@ describe("EuSaida", () => {
     expect(EuSaida.parse(eu)).toEqual(eu);
   });
 });
+
+describe("LoginEntrada", () => {
+  it("normaliza o e-mail e exige o cliente", async () => {
+    const { LoginEntrada } = await import("../src/index.js");
+    expect(
+      LoginEntrada.parse({
+        email: " Ana@Exemplo.com ",
+        senha: "x",
+        cliente: "web",
+      }).email,
+    ).toBe("ana@exemplo.com");
+    expect(
+      LoginEntrada.safeParse({ email: "ana@exemplo.com", senha: "x" }).success,
+    ).toBe(false);
+    expect(
+      LoginEntrada.safeParse({ email: "ana", senha: "x", cliente: "web" })
+        .success,
+    ).toBe(false);
+    expect(
+      LoginEntrada.safeParse({
+        email: "ana@exemplo.com",
+        senha: "",
+        cliente: "web",
+      }).success,
+    ).toBe(false);
+  });
+});
