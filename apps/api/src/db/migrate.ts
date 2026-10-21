@@ -46,8 +46,8 @@ async function ajustarAtributos(
  * Garante os papéis do banco de forma idempotente:
  * - `app_runtime`: usado pela API; sem superusuário e sem `BYPASSRLS` (R2);
  * - `app_auth`: sem login; dono das funções de autenticação (R3).
- * Concede a quem migra o direito de assumir `app_auth`, para passar a ele a
- * posse das funções.
+ * Concede a quem migra o direito de assumir `app_auth` (sem herdar seus privilégios),
+ * para passar a ele a posse das funções.
  */
 export async function garantirPapeis(
   cliente: pg.Client,
@@ -70,7 +70,11 @@ export async function garantirPapeis(
   );
   await ajustarAtributos(cliente, "app_runtime", true);
   await ajustarAtributos(cliente, "app_auth", false);
-  await cliente.query("GRANT app_auth TO CURRENT_USER WITH SET TRUE");
+  // INHERIT FALSE é essencial: as políticas `TO app_auth` valem também para quem herda o papel,
+  // e herdá-lo daria ao migrador leitura sem contexto de tenant, furando a RLS.
+  await cliente.query(
+    "GRANT app_auth TO CURRENT_USER WITH SET TRUE, INHERIT FALSE",
+  );
 }
 
 /** Garante os papéis e aplica as migrations pendentes com a conexão administrativa. */

@@ -57,7 +57,7 @@ async function preparar(): Promise<() => Promise<void>> {
     // Quem migra precisa administrar os papéis da aplicação (PostgreSQL 16+).
     await admin.query("GRANT app_runtime TO owner_teste WITH ADMIN OPTION");
     await admin.query(
-      "GRANT app_auth TO owner_teste WITH ADMIN OPTION, SET TRUE",
+      "GRANT app_auth TO owner_teste WITH ADMIN OPTION, SET TRUE, INHERIT FALSE",
     );
     await admin.query(`CREATE DATABASE "${nomeBanco}" OWNER owner_teste`);
   } finally {
@@ -74,6 +74,13 @@ async function preparar(): Promise<() => Promise<void>> {
 
   process.env["TEST_DB_NAME"] = nomeBanco;
   process.env["TEST_OWNER_URL"] = urlOwner;
+  // Superusuário só para asserções globais dos testes (a RLS não o esconde de nada).
+  process.env["TEST_SUPER_URL"] = urlPara(
+    env.databaseAdminUrl,
+    new URL(env.databaseAdminUrl).username,
+    decodeURIComponent(new URL(env.databaseAdminUrl).password),
+    nomeBanco,
+  );
   process.env["TEST_RUNTIME_URL"] = urlPara(
     env.databaseAdminUrl,
     "app_runtime",

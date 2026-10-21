@@ -1,3 +1,9 @@
+import { Inicio } from "./inicio";
+
 export default function Page() {
-  return <main />;
+  return (
+    <main>
+      <Inicio />
+    </main>
+  );
 }

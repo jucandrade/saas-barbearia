@@ -44,7 +44,7 @@ Revoga a sessão atual. `204`. Evento `logout`.
 
 ### `GET /auth/eu`
 
-`200 { "usuario": Usuario, "barbearia": { "id", "nome" } }`. Usado pelo cliente para saber quem está logado.
+`200 { "usuario": Usuario, "barbearia": { "id", "nome", "unidades": [{ "id", "nome", "fusoHorario" }] } }`. Usado pelo cliente para saber quem está logado e em qual barbearia (e fuso da unidade).
 
 ## Convite (primeiro acesso)
 

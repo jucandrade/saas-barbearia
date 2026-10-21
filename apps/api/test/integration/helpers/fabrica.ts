@@ -1,4 +1,13 @@
-import { barbearia, unidade, usuario } from "../../../src/db/schema/index.js";
+import {
+  barbearia,
+  tokenAcesso,
+  unidade,
+  usuario,
+} from "../../../src/db/schema/index.js";
+import {
+  gerarToken,
+  hashToken,
+} from "../../../src/identidade/seguranca/tokens.js";
 import { comTenantAdmin, novoUuid } from "./db.js";
 
 export interface BarbeariaCriada {
@@ -54,4 +63,30 @@ export async function criarUsuario(dados: UsuarioParaCriar): Promise<string> {
     });
   });
   return id;
+}
+
+export interface TokenParaCriar {
+  tenantId: string;
+  usuarioId: string;
+  finalidade?: "convite" | "recuperacao";
+  expiraEm: Date;
+  usadoEm?: Date | null;
+  invalidadoEm?: Date | null;
+}
+
+/** Cria um token de acesso direto no banco e devolve o token em claro. */
+export async function criarTokenAcesso(dados: TokenParaCriar): Promise<string> {
+  const token = gerarToken();
+  await comTenantAdmin(dados.tenantId, async (tx) => {
+    await tx.insert(tokenAcesso).values({
+      tenantId: dados.tenantId,
+      usuarioId: dados.usuarioId,
+      finalidade: dados.finalidade ?? "convite",
+      tokenHash: hashToken(token),
+      expiraEm: dados.expiraEm,
+      usadoEm: dados.usadoEm ?? null,
+      invalidadoEm: dados.invalidadoEm ?? null,
+    });
+  });
+  return token;
 }
