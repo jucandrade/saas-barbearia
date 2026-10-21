@@ -53,6 +53,25 @@ Primeira feature com banco de dados: cria a base multi-tenant (barbearia → uni
 **Resultado (pré-pesquisa)**: aprovado; a única decisão aberta exigida (ORM) foi resolvida por ADR.
 **Resultado (pós-design)**: aprovado, com duas notas justificadas em Complexity Tracking.
 
+**Reavaliação com os arquivos reais (T090, após a implementação)**: aprovado, sem violações novas.
+
+| Princípio | Verificado nos arquivos |
+|---|---|
+| I | Seis tabelas com `ENABLE` e `FORCE ROW LEVEL SECURITY` (`apps/api/drizzle/0001_rls-and-permissions.sql`). A API usa `app_runtime`, que não é superusuário, não tem `BYPASSRLS` e não é dona de tabela (`rls.spec.ts`). Suítes `rls.spec.ts` e `leak.spec.ts` cobrem leitura e escrita cruzadas por tabela e por endpoint; a remoção silenciosa de uma política (`USING (true)`) quebra o `rls.spec.ts`. |
+| IV | `packages/domain` não declara nenhuma dependência e a regra de lint proíbe frameworks, banco, rede e relógio; as regras recebem a hora por parâmetro. Na API, nenhum serviço lê `Date.now()` fora de `Clock`. |
+| V | Schemas Zod em `packages/contracts`, registro de rotas e OpenAPI 3.1 gerado dele; `routes.spec.ts` garante que toda rota dos controladores está no registro com o mesmo acesso, e os testes de contrato cobrem cada endpoint. |
+| VI | Um `IdentityModule`; o `CliModule` só reaproveita os mesmos serviços com a conexão administrativa. |
+| VII | E-mail após o commit, com reenvio; o envio da recuperação não é aguardado. Falhas de envio são registradas sem dado pessoal (`logs.spec.ts`). |
+| IX | `logs.spec.ts` e `full-audit.spec.ts` provam que logs e eventos não trazem e-mail, nome, senha, token nem IP; a anonimização apaga nome e e-mail (SC-008). |
+| X | Nenhum uso de Redis, fila ou biblioteca de CLI. |
+
+**O que a implementação ensinou** (já corrigido e coberto por teste):
+
+1. As políticas `TO app_auth` valem também para quem **herda** o papel; o papel que migra recebe `app_auth` com `INHERIT FALSE`, senão herdaria leitura sem contexto de tenant e furaria a RLS.
+2. O `REVOKE ... FROM PUBLIC` das funções `auth_*` precisa vir **antes** de passar a posse a `app_auth`; depois, quem migra deixa de ser dono e o comando não tem efeito. O acesso de quem migra é concedido depois da troca de dono.
+3. O `lint` precisa depender do build dos pacotes (`turbo.json`), porque um checkout limpo não tem o `dist` de `@barbearia/contracts`.
+
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -126,7 +145,7 @@ specs/002-tenant-auth/
 
 | Ponto | Por que é necessário | Alternativa mais simples rejeitada porque |
 |---|---|---|
-| Três funções `SECURITY DEFINER` que contornam a RLS | O login precisa achar usuário, sessão e token **antes** de conhecer o tenant; o e-mail é único no sistema inteiro | Papel com `BYPASSRLS` para o login: um erro de consulta viraria vazamento entre barbearias. As funções são pequenas, fixas e cobertas por teste |
+| Três funções `SECURITY DEFINER` de propriedade do papel `app_auth` | O login precisa achar usuário, sessão e token **antes** de conhecer o tenant; o e-mail é único no sistema inteiro | Papel com `BYPASSRLS` para o login: um erro de consulta viraria vazamento entre barbearias. `app_auth` não tem login nem `BYPASSRLS`; sua leitura vem de três políticas dedicadas (`*_auth_read`), e quem migra o assume sem herdar (`INHERIT FALSE`). Funções pequenas, fixas e cobertas por teste |
 | E-mail enviado após o commit, sem outbox formal (princípio VII) | Um único e-mail de baixo risco por operação, com reenvio disponível ao dono | Tabela outbox e job de despacho: exigem fila e rotina de retentativa que só fazem sentido com jobs reais (princípio X) |
 | Limite por origem em memória (`@nestjs/throttler`) | Uma única instância da API nesta fase | Armazenamento no Redis: infraestrutura e testes extras sem necessidade hoje; troca prevista ao escalar ([R8](research.md#r8-bloqueio-de-login-e-limite-de-requisições)) |
 | Conexão administrativa nos comandos da equipe do produto | Provisionar cria o tenant e anonimizar age sobre um usuário achado por e-mail, antes de haver contexto | Rodar esses comandos como `app_runtime`: não consegue criar barbearia nem achar usuário sem contexto. Mitigação: contexto explícito (R2) e testes com dono não superusuário |
