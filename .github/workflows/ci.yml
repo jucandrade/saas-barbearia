@@ -49,6 +49,12 @@ jobs:
       - name: Infra up
         run: pnpm infra:up
 
+      - name: Migrate
+        run: pnpm db:migrate
+
+      - name: Integration test
+        run: pnpm test:integration
+
       - name: Infra check
         run: pnpm infra:check
 
