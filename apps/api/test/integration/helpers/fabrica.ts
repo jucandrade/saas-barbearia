@@ -1,5 +1,7 @@
 import {
   barbearia,
+  eventoSeguranca,
+  sessao,
   tokenAcesso,
   unidade,
   usuario,
@@ -8,7 +10,7 @@ import {
   gerarToken,
   hashToken,
 } from "../../../src/identidade/seguranca/tokens.js";
-import { comTenantAdmin, novoUuid } from "./db.js";
+import { comTenantAdmin, conexaoAdmin, novoUuid } from "./db.js";
 
 export interface BarbeariaCriada {
   barbeariaId: string;
@@ -89,4 +91,41 @@ export async function criarTokenAcesso(dados: TokenParaCriar): Promise<string> {
     });
   });
   return token;
+}
+
+/** Cria uma sessão direto no banco (sem passar pelo login) e devolve o token em claro. */
+export async function criarSessaoNoBanco(dados: {
+  tenantId: string;
+  usuarioId: string;
+  expiraEm?: Date;
+}): Promise<string> {
+  const token = gerarToken();
+  await comTenantAdmin(dados.tenantId, async (tx) => {
+    await tx.insert(sessao).values({
+      tenantId: dados.tenantId,
+      usuarioId: dados.usuarioId,
+      tokenHash: hashToken(token),
+      expiraEm: dados.expiraEm ?? new Date(Date.now() + 60 * 60 * 1000),
+    });
+  });
+  return token;
+}
+
+/** Cria um evento de segurança direto no banco, para os testes de isolamento. */
+export async function criarEventoNoBanco(
+  tenantId: string | null,
+): Promise<void> {
+  if (tenantId === null) {
+    await conexaoAdmin().query(
+      "insert into evento_seguranca (tenant_id, tipo, ator_tipo) values (null, 'login_falha', 'sistema')",
+    );
+    return;
+  }
+  await comTenantAdmin(tenantId, async (tx) => {
+    await tx.insert(eventoSeguranca).values({
+      tenantId,
+      tipo: "login_sucesso",
+      atorTipo: "sistema",
+    });
+  });
 }

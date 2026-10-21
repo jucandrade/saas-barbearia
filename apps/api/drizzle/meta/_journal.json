@@ -29,13 +29,6 @@
       "when": 1792613144865,
       "tag": "0003_gatilhos-de-integridade",
       "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1792613811654,
-      "tag": "0004_funcoes-para-o-dono",
-      "breakpoints": true
     }
   ]
 }

@@ -58,14 +58,30 @@ AS $$
     AND t.finalidade = p_finalidade::public.finalidade_token
 $$;--> statement-breakpoint
 
-ALTER FUNCTION "auth_buscar_usuario_por_email"(text) OWNER TO app_auth;--> statement-breakpoint
-ALTER FUNCTION "auth_buscar_sessao"(bytea) OWNER TO app_auth;--> statement-breakpoint
-ALTER FUNCTION "auth_buscar_token_acesso"(bytea, text) OWNER TO app_auth;--> statement-breakpoint
-REVOKE CREATE ON SCHEMA public FROM app_auth;--> statement-breakpoint
-
+-- Permissões ANTES de passar a posse: depois disso quem migra deixa de ser dono e o REVOKE não teria efeito.
+-- Só a API e quem migra (a equipe do produto usa a conexão administrativa, R2) podem executá-las;
+-- o acesso de quem migra é concedido depois da troca de dono, abaixo.
 REVOKE ALL ON FUNCTION "auth_buscar_usuario_por_email"(text) FROM PUBLIC;--> statement-breakpoint
 REVOKE ALL ON FUNCTION "auth_buscar_sessao"(bytea) FROM PUBLIC;--> statement-breakpoint
 REVOKE ALL ON FUNCTION "auth_buscar_token_acesso"(bytea, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION "auth_buscar_usuario_por_email"(text) TO app_runtime;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION "auth_buscar_sessao"(bytea) TO app_runtime;--> statement-breakpoint
-GRANT EXECUTE ON FUNCTION "auth_buscar_token_acesso"(bytea, text) TO app_runtime;
+GRANT EXECUTE ON FUNCTION "auth_buscar_token_acesso"(bytea, text) TO app_runtime;--> statement-breakpoint
+
+ALTER FUNCTION "auth_buscar_usuario_por_email"(text) OWNER TO app_auth;--> statement-breakpoint
+ALTER FUNCTION "auth_buscar_sessao"(bytea) OWNER TO app_auth;--> statement-breakpoint
+ALTER FUNCTION "auth_buscar_token_acesso"(bytea, text) OWNER TO app_auth;--> statement-breakpoint
+-- A troca de dono reescreve a entrada implícita do dono antigo; quem migra recebe o acesso de volta,
+-- agindo por um instante como app_auth (o migrador tem SET nesse papel, sem herdar seus privilégios).
+DO $$
+DECLARE
+  migrador text := current_user;
+BEGIN
+  SET LOCAL ROLE app_auth;
+  EXECUTE format('GRANT EXECUTE ON FUNCTION auth_buscar_usuario_por_email(text) TO %I', migrador);
+  EXECUTE format('GRANT EXECUTE ON FUNCTION auth_buscar_sessao(bytea) TO %I', migrador);
+  EXECUTE format('GRANT EXECUTE ON FUNCTION auth_buscar_token_acesso(bytea, text) TO %I', migrador);
+  RESET ROLE;
+END
+$$;--> statement-breakpoint
+REVOKE CREATE ON SCHEMA public FROM app_auth;
