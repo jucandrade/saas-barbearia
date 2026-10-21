@@ -12,6 +12,8 @@ import { InvitationsController } from "./invitations/invitations.controller.js";
 import { InvitationIssuer } from "./invitations/invitation-issuer.js";
 import { InvitationsService } from "./invitations/invitations.service.js";
 import { EmailPort } from "./email/email.port.js";
+import { RecoveryController } from "./recovery/recovery.controller.js";
+import { RecoveryService } from "./recovery/recovery.service.js";
 import { SmtpAdapter } from "./email/smtp.adapter.js";
 import { TeamController } from "./team/team.controller.js";
 import { TeamService } from "./team/team.service.js";
@@ -28,7 +30,12 @@ import { PasswordService } from "./security/password.service.js";
       useFactory: (env: Env) => [{ ttl: 60_000, limit: env.limitPerMinute }],
     }),
   ],
-  controllers: [AuthController, InvitationsController, TeamController],
+  controllers: [
+    AuthController,
+    InvitationsController,
+    TeamController,
+    RecoveryController,
+  ],
   providers: [
     { provide: Clock, useClass: SystemClock },
     { provide: EmailPort, useClass: SmtpAdapter },
@@ -39,6 +46,7 @@ import { PasswordService } from "./security/password.service.js";
     InvitationIssuer,
     InvitationsService,
     TeamService,
+    RecoveryService,
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrorFilter },

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { SessionOutput, type LoginInput } from "@barbearia/contracts";
@@ -76,6 +77,9 @@ export function SignInForm() {
           {submitting ? "Entrando…" : "Entrar"}
         </button>
       </form>
+      <p>
+        <Link href="/forgot-password">Esqueci minha senha</Link>
+      </p>
     </>
   );
 }
