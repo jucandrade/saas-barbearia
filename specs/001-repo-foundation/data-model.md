@@ -15,11 +15,12 @@ Definidas em `.env.example` (versionado). Cópia opcional para `.env` (ignorado 
 | `POSTGRES_PASSWORD` | `barbearia` | `docker-compose.yml` | Senha local (credencial de exemplo, não secreta) |
 | `POSTGRES_DB` | `barbearia` | `docker-compose.yml` | Banco criado na primeira subida |
 | `REDIS_PORT` | `6379` | `docker-compose.yml`, `scripts/infra-check.mjs` | Porta do Redis exposta no host |
+| `PORT` | `3000` | `apps/api` (script `dev`) | Porta da API em desenvolvimento |
 
 **Regras**:
 
 - Nenhum valor real de produção ou segredo entra em arquivo versionado (FR-016).
-- Portas dos apps têm padrão fixo: api `3000` (sobrescrevível pela variável de processo `PORT`), admin `3001`, booking `3002`, Metro (Expo) `8081`. Para trocar, veja [contracts/commands.md](contracts/commands.md).
+- Portas dos apps têm padrão fixo: api `3000` (sobrescrevível por `PORT` no `.env`), admin `3001`, booking `3002`, Metro (Expo) `8081`. Para trocar, veja [contracts/commands.md](contracts/commands.md).
 
 ## Volumes locais
 

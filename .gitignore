@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.next/
+.expo/
+.turbo/
+coverage/
+*.log
+
+# Variáveis locais: só o .env.example é versionado
+.env
+.env.*
+!.env.example
+
+.DS_Store
+Thumbs.db
+next-env.d.ts

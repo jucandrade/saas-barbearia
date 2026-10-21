@@ -1,0 +1,13 @@
+node_modules
+dist
+.next
+.turbo
+.expo
+coverage
+pnpm-lock.yaml
+next-env.d.ts
+
+# Arquivos gerados e mantidos pelo Spec Kit e pela documentação de processo
+.specify
+.claude
+specs

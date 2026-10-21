@@ -35,5 +35,5 @@ Todos os comandos rodam na raiz do repositório, com a **mesma sintaxe em PowerS
 ## Trocar portas
 
 - Infraestrutura: definir `POSTGRES_PORT` ou `REDIS_PORT` no `.env` ([data-model.md](../data-model.md)).
-- API, pontualmente: rodar só a API com a variável de processo `PORT` definida (em PowerShell, `$env:PORT=4000; pnpm --filter @barbearia/api dev`; em bash, `PORT=4000 pnpm --filter @barbearia/api dev`). É o único caso documentado com sintaxe diferente por shell, porque define variável de ambiente; não é um comando do projeto.
+- API: definir `PORT` no `.env` da raiz (copiado de `.env.example`). O script `dev` da API carrega esse arquivo se ele existir, então o procedimento é o mesmo em PowerShell e bash e não há comando com variante por sistema operacional (SC-006).
 - Admin e booking, pontualmente: `pnpm --filter @barbearia/admin dev --port 4001`.

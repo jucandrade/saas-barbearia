@@ -7,7 +7,7 @@ Roteiro para provar, ponta a ponta, que a feature 001 cumpre a spec. Rode cada b
 - Git
 - Node.js na versão de `.nvmrc` (24 LTS)
 - pnpm na versão de `packageManager` (`npm install -g pnpm@<versão>` ou `corepack enable`)
-- Docker Desktop (Windows) ou Docker Engine com Compose v2 (Linux), apenas para os cenários 3 e 6
+- Docker Desktop (Windows) ou Docker Engine com Compose v2 (Linux), apenas para os cenários 3 e 6 (quem usa Podman precisa expor o comando `docker`, por exemplo com o pacote `podman-docker`; ver [R13](research.md#r13-engine-de-contêiner-docker-como-padrão-único))
 
 ## Cenário 1: clonar, instalar e testar (US1, SC-001, SC-002)
 
@@ -39,6 +39,7 @@ pnpm build
 | `const x: number = "a"` em `packages/domain/src/index.ts` | `pnpm typecheck` | Falha com arquivo e linha |
 | `import "@nestjs/common"` em `packages/domain` | `pnpm lint` | Falha pela regra de pureza do domínio |
 | `expect(1).toBe(2)` no teste de exemplo | `pnpm test` | Falha, com código de saída ≠ 0 |
+| Alteração que só o build detecta, por exemplo `export const revalidate = "x"` (configuração de segmento inválida) em `apps/booking/app/page.tsx`; se o Next aceitar o valor, usar outra alteração que passe em lint e tipos mas falhe no `next build` | `pnpm build` | Falha apontando o app afetado (US2 cenário 5, SC-004) |
 
 ## Cenário 3: infraestrutura local (US3, SC-003)
 
@@ -88,7 +89,7 @@ No Windows, com `git config core.autocrlf true`, clonar de novo e rodar `pnpm fo
 ## Cenário 6: integração contínua (US2, SC-004, SC-005)
 
 1. Fazer push de um commit válido: os jobs `linux` e `windows` passam, cada um em até 10 minutos.
-2. Fazer push de cada alteração negativa do cenário 2 em uma branch descartável: o job correspondente falha no passo com o nome da etapa.
+2. Fazer push de cada alteração negativa do cenário 2 (incluindo a de build, que só deve falhar no job `linux`, passo `Build`) em uma branch descartável: o job correspondente falha no passo com o nome da etapa.
 3. Fazer push de uma alteração que quebre o `docker-compose.yml` (por exemplo, uma imagem inexistente): só o job `linux` falha, no passo `Infra up`.
 
 Contrato da pipeline em [contracts/ci.md](contracts/ci.md).

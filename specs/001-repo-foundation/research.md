@@ -4,7 +4,8 @@ Decisões técnicas da feature 001. Cada item segue o formato Decisão / Raciona
 
 ## R1. Node.js e pnpm
 
-- **Decisão**: Node.js 24 LTS, versão exata em `.nvmrc` (inicialmente `24.14.0`, a instalada na máquina de desenvolvimento) e `engines.node: ">=24.14.0 <25"` no `package.json` da raiz, com `engine-strict=true` no `.npmrc`. pnpm 10 travado em `packageManager: "pnpm@10.x.y"` (versão exata no momento da implementação). Instalação do pnpm documentada como `npm install -g pnpm@<versão>` (ou `corepack enable`); o pnpm respeita `packageManager` e baixa a versão travada automaticamente (`manage-package-manager-versions`, padrão no pnpm 10).
+- **Decisão**: Node.js 24 LTS, versão exata em `.nvmrc` (`24.22.1`, a LTS mais recente na implementação; o `@nestjs/schematics` 12 exige >= 24.15.0) e `engines.node: ">=24.22.1 <25"` no `package.json` da raiz, com `engine-strict=true` no `.npmrc`. pnpm 10 travado em `packageManager: "pnpm@10.x.y"` (versão exata no momento da implementação). Instalação do pnpm documentada como `npm install -g pnpm@<versão>` (ou `corepack enable`); o pnpm respeita `packageManager` e baixa a versão travada automaticamente (`manage-package-manager-versions`, padrão no pnpm 10).
+- **Scripts de build de dependências**: o pnpm 10 não executa por padrão os scripts de instalação das dependências. `onlyBuiltDependencies` em `pnpm-workspace.yaml` lista as que precisam (aprovadas na implementação: `@swc/core`, `esbuild`, `unrs-resolver`); a lista final sai de `pnpm approve-builds` na primeira instalação completa (T018 e T033).
 - **Racional**: Node 24 é a linha LTS ativa em out/2026 (Node 26 só vira LTS no fim de outubro). `engine-strict` faz a instalação falhar cedo com versão errada (edge case da spec). O Corepack deixou de vir com o Node a partir da 25, então o README não depende só dele.
 - **Alternativas**: Volta ou `.node-version` (menos difundido no Windows); `useNodeVersion` do pnpm (acopla o runtime ao gerenciador e confunde quem roda `node` direto).
 
@@ -34,9 +35,9 @@ Decisões técnicas da feature 001. Cada item segue o formato Decisão / Raciona
 
 ## R6. Esqueleto da API (NestJS)
 
-- **Decisão**: NestJS 11 com adaptador Express, CommonJS, `AppModule` importando só um `HealthModule` com `GET /health` → `200 {"status":"ok"}`, conforme [contracts/health.md](contracts/health.md). Porta via `PORT` (padrão 3000). Build com `nest build` (tsc). Sem conexão com banco ou Redis.
-- **Racional**: o health check atende FR-003 e dá um alvo verificável para SC-007. Ficar em CommonJS é o caminho suportado pelo Nest; o Node 24 permite `require()` de pacotes ESM síncronos, o que deixa a porta aberta para consumir `packages/*` em ESM.
-- **Alternativas**: Fastify (decisão sem necessidade agora); `@nestjs/terminus` (verifica dependências, mas aqui não há nenhuma).
+- **Decisão**: NestJS 12 (a versão estável na implementação; o plan assumia a 11) com adaptador Express, **ESM** (`"type": "module"`, `module: NodeNext`, imports relativos com extensão `.js`), `AppModule` importando só um `HealthModule` com `GET /health` → `200 {"status":"ok"}`, conforme [contracts/health.md](contracts/health.md). Porta via `PORT` (padrão 3000). Build com `nest build` (tsc). Sem conexão com banco ou Redis.
+- **Racional**: o health check atende FR-003 e dá um alvo verificável para SC-007. A partir do Nest 12 os pacotes `@nestjs/*` são somente ESM, então a API segue ESM (um projeto CommonJS não consegue importá-los). Isso também alinha a API com `packages/*`, que são ESM.
+- **Alternativas**: ficar no Nest 11 com CommonJS (descartado: versão mais antiga sem ganho); Fastify (decisão sem necessidade agora); `@nestjs/terminus` (verifica dependências, mas aqui não há nenhuma).
 
 ## R7. Esqueletos web (Next.js)
 
@@ -62,7 +63,7 @@ Decisões técnicas da feature 001. Cada item segue o formato Decisão / Raciona
 
 ## R10. Variáveis e configuração local
 
-- **Decisão**: `.env.example` versionado com `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` e `REDIS_PORT`. `.env` fica no `.gitignore`. Todos os valores têm padrão funcional, então o projeto roda sem `.env` (FR-015, FR-016). As portas dos apps têm padrão fixo: a API lê `PORT` (padrão 3000), e os apps Next ficam nos scripts (`next dev --port 3001` e `--port 3002`). Para trocar pontualmente, `pnpm --filter @barbearia/admin dev --port <n>`. A raiz não carrega `.env` para os apps porque, nesta feature, eles não precisam de nenhuma variável. Inventário completo em [data-model.md](data-model.md).
+- **Decisão**: `.env.example` versionado com `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `REDIS_PORT` e `PORT` (API). `.env` fica no `.gitignore`. Todos os valores têm padrão funcional, então o projeto roda sem `.env` (FR-015, FR-016). As portas dos apps têm padrão fixo: a API lê `PORT` (padrão 3000), carregado do `.env` da raiz pelo script `dev` quando o arquivo existe, e os apps Next ficam nos scripts (`next dev --port 3001` e `--port 3002`). Para trocar pontualmente, `pnpm --filter @barbearia/admin dev --port <n>`. Os apps web não carregam `.env` porque, nesta feature, não precisam de nenhuma variável; só a porta da API vem de lá. Inventário completo em [data-model.md](data-model.md).
 - **Alternativas**: `dotenv-cli` nos scripts (dependência extra); `.env` por app (espalha configuração que hoje é só de infraestrutura).
 
 ## R11. Fins de linha e editor
@@ -79,3 +80,9 @@ Decisões técnicas da feature 001. Cada item segue o formato Decisão / Raciona
 - **Racional**: o repositório está no GitHub, e o Actions oferece runners Linux e Windows gratuitos para o caso de uso. Registrado em [ADR 0001](../../docs/adr/0001-ci-github-actions.md).
 - **Divergência registrada**: a spec (FR-017) pedia build também em Windows. O pedido do plan define o job Windows sem build, e a spec foi ajustada para isso. `format:check` foi mantido no Windows porque é a verificação que detecta problemas de fim de linha (FR-012) e custa segundos.
 - **Alternativas**: GitLab CI, CircleCI e Azure Pipelines (exigiriam outro serviço além do GitHub); Turbo remote cache (desnecessário no tamanho atual).
+
+## R13. Engine de contêiner: Docker como padrão único
+
+- **Decisão**: os scripts `infra:*` chamam `docker compose` diretamente. Não haverá `scripts/compose.mjs` nem a variável `CONTAINER_ENGINE`. O pré-requisito documentado é Docker (Docker Desktop no Windows, Docker Engine com Compose v2 no Linux).
+- **Racional**: a spec exige paridade entre Windows e Linux (FR-009), não suporte a várias engines. O CI e o ADR 0001 já usam Docker. Um wrapper adicionaria um script e uma variável sem requisito que os peça, e a feature ficaria com um caminho (Podman) que o CI não exercita. O motivo original da proposta, um notebook Windows com apenas Podman, era restrição de máquina, não do projeto.
+- **Alternativas**: `scripts/compose.mjs` com detecção de `docker` ou `podman` (descartado pelos motivos acima; pode ser reaberto se a equipe passar a usar Podman de forma recorrente); instalar o pacote `podman-docker` (Linux) ou configurar o alias do Docker CLI para quem só tem Podman, sem mudar o projeto.

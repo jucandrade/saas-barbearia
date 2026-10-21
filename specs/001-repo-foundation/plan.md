@@ -12,9 +12,9 @@ Criar o monorepo com os sete espaços da constitution, sem regra de negócio, de
 
 **Language/Version**: TypeScript (`strict`) sobre Node.js 24 LTS, versão exata fixada em `.nvmrc` e `engines` ([R1](research.md#r1-nodejs-e-pnpm))
 
-**Primary Dependencies**: pnpm 10 (via `packageManager`), Turborepo 2, NestJS 11, Next.js 16 + React 19, Expo SDK estável mais recente, ESLint 9 (flat config) + typescript-eslint, Prettier 3. Versões exatas travadas no `pnpm-lock.yaml` no momento da implementação.
+**Primary Dependencies**: pnpm 10 (via `packageManager`), Turborepo 2, NestJS 12 (ESM), Next.js 16 + React 19, Expo SDK 58, ESLint 9 (flat config; o 10 ainda não é aceito pelos plugins do Next e do Expo) + typescript-eslint, Prettier 3. Versões exatas travadas no `pnpm-lock.yaml`. TypeScript fica em 6.0.x (`~6.0.3`) porque o `typescript-eslint` 8.x ainda não aceita o TypeScript 7 (peer `<6.1.0`); revisar quando aceitar.
 
-**Storage**: PostgreSQL e Redis apenas como infraestrutura local (Docker Compose), sem esquemas. Nenhum ORM ou driver de banco nesta feature ([R9](research.md#r9-verificação-de-banco-e-fila-sem-biblioteca)).
+**Storage**: PostgreSQL e Redis apenas como infraestrutura local (Docker Compose; Docker é o único engine suportado, sem wrapper para Podman, [R13](research.md#r13-engine-de-contêiner-docker-como-padrão-único)), sem esquemas. Nenhum ORM ou driver de banco nesta feature ([R9](research.md#r9-verificação-de-banco-e-fila-sem-biblioteca)).
 
 **Testing**: Vitest em `packages/*` e em `apps/api` (com `unplugin-swc` para metadados de decorators) ([R5](research.md#r5-testes-vitest-também-na-api)); `apps/admin`, `apps/booking` e `apps/barber` sem testes nesta feature.
 
@@ -90,6 +90,7 @@ specs/001-repo-foundation/
 ├── .editorconfig
 ├── .gitattributes                  # * text=auto eol=lf
 ├── .gitignore
+├── .vscode/settings.json           # exclui node_modules e saídas de build do watcher do editor
 ├── .env.example                    # portas e credenciais locais de exemplo
 ├── .npmrc                          # engine-strict=true
 ├── .nvmrc                          # versão exata do Node
