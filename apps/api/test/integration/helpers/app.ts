@@ -3,69 +3,69 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AppModule } from "../../../src/app.module.js";
 import { ENV } from "../../../src/config/config.module.js";
-import { lerEnv, type Env } from "../../../src/config/env.js";
+import { readEnv, type Env } from "../../../src/config/env.js";
 import { TenantDb } from "../../../src/db/tenant-db.js";
-import { SessaoService } from "../../../src/identidade/auth/sessao.service.js";
-import { EmailPort } from "../../../src/identidade/email/email.port.js";
-import { MemoriaAdapter } from "../../../src/identidade/email/memoria.adapter.js";
-import {
-  Relogio,
-  RelogioControlavel,
-} from "../../../src/identidade/relogio.js";
-import type { Papel } from "@barbearia/domain";
+import { SessionService } from "../../../src/identity/auth/session.service.js";
+import { EmailPort } from "../../../src/identity/email/email.port.js";
+import { MemoryAdapter } from "../../../src/identity/email/memory.adapter.js";
+import { Clock, ControllableClock } from "../../../src/identity/clock.js";
+import type { Role } from "@barbearia/domain";
 import { urlRuntime } from "./db.js";
 
-export const ORIGEM_ADMIN = "http://localhost:3001";
+export const ADMIN_ORIGIN = "http://localhost:3001";
 
-export interface AppDeTeste {
+export interface TestApp {
   app: INestApplication;
-  relogio: RelogioControlavel;
-  email: MemoriaAdapter;
+  clock: ControllableClock;
+  email: MemoryAdapter;
   env: Env;
-  /** Cliente HTTP em memória (supertest) apontado para o app. */
+  /** In-memory HTTP client (supertest) pointed at the app. */
   http: () => ReturnType<typeof request>;
-  /** Abre uma sessão direto no banco e devolve o token (para testes de rotas protegidas). */
-  abrirSessao: (usuario: {
+  /** Opens a session straight in the database and returns the token (for protected-route tests). */
+  openSession: (user: {
     id: string;
     tenantId: string;
-    papel: Papel;
+    role: Role;
   }) => Promise<string>;
-  fechar: () => Promise<void>;
+  close: () => Promise<void>;
 }
 
-export interface OpcoesApp {
-  /** Módulos extras, por exemplo controladores de teste. */
-  controladores?: Type[];
-  relogio?: RelogioControlavel;
-  email?: MemoriaAdapter;
-  limitePorMinuto?: number;
+export interface OptionsApp {
+  /** Extra modules, for example test controllers. */
+  controllers?: Type[];
+  clock?: ControllableClock;
+  email?: MemoryAdapter;
+  limitPerMinute?: number;
+  /** Minimum response time of `forgot` (0 in tests, except the one that measures time). */
+  recoveryFloorMs?: number;
 }
 
 /**
- * Sobe o app Nest completo sobre o banco de teste, com e-mail em memória, relógio
- * controlável e hash de senha barato, para os testes serem rápidos e determinísticos.
+ * Boots the full Nest app on the test database, with in-memory e-mail, a controllable clock
+ * and a cheap password hash, so tests are fast and deterministic.
  */
-export async function criarApp(opcoes: OpcoesApp = {}): Promise<AppDeTeste> {
-  const relogio = opcoes.relogio ?? new RelogioControlavel();
-  const email = opcoes.email ?? new MemoriaAdapter();
-  const env = lerEnv({
+export async function createApp(options: OptionsApp = {}): Promise<TestApp> {
+  const clock = options.clock ?? new ControllableClock();
+  const email = options.email ?? new MemoryAdapter();
+  const env = readEnv({
     ...process.env,
     DATABASE_URL: urlRuntime(),
-    ADMIN_BASE_URL: ORIGEM_ADMIN,
+    ADMIN_BASE_URL: ADMIN_ORIGIN,
     ARGON2_MEMORY_KIB: "1024",
     ARGON2_TIME_COST: "1",
     ARGON2_PARALLELISM: "1",
-    RATE_LIMIT_POR_MINUTO: String(opcoes.limitePorMinuto ?? 10_000),
+    RATE_LIMIT_PER_MINUTE: String(options.limitPerMinute ?? 10_000),
+    RECOVERY_FLOOR_MS: String(options.recoveryFloorMs ?? 0),
   });
 
   const modulo = await Test.createTestingModule({
     imports: [AppModule],
-    controllers: opcoes.controladores ?? [],
+    controllers: options.controllers ?? [],
   })
     .overrideProvider(ENV)
     .useValue(env)
-    .overrideProvider(Relogio)
-    .useValue(relogio)
+    .overrideProvider(Clock)
+    .useValue(clock)
     .overrideProvider(EmailPort)
     .useValue(email)
     .compile();
@@ -75,16 +75,16 @@ export async function criarApp(opcoes: OpcoesApp = {}): Promise<AppDeTeste> {
 
   return {
     app,
-    relogio,
+    clock,
     email,
     env,
     http: () => request(app.getHttpServer() as Parameters<typeof request>[0]),
-    abrirSessao: (usuario) =>
+    openSession: (user) =>
       app
         .get(TenantDb)
-        .transacao(usuario.tenantId, (tx) =>
-          app.get(SessaoService).iniciar(tx, usuario),
+        .transaction(user.tenantId, (tx) =>
+          app.get(SessionService).start(tx, user),
         ),
-    fechar: () => app.close(),
+    close: () => app.close(),
   };
 }

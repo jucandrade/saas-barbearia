@@ -1,166 +1,163 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { barbearia, usuario } from "../../src/db/schema/index.js";
+import { barbershop, user } from "../../src/db/schema/index.js";
 import { TenantDb } from "../../src/db/tenant-db.js";
-import { conexaoRuntime, fecharConexoes } from "./helpers/db.js";
-import { criarBarbearia, criarUsuario } from "./helpers/fabrica.js";
+import { runtimeConnection, closeConnections } from "./helpers/db.js";
+import { createBarbershop, createUser } from "./helpers/factory.js";
 
-/** O Drizzle embrulha o erro do Postgres em `cause`; junta as duas mensagens. */
-async function mensagemDoErro(promessa: Promise<unknown>): Promise<string> {
+/** Drizzle wraps the Postgres error in `cause`; joins both messages. */
+async function errorMessage(promise: Promise<unknown>): Promise<string> {
   try {
-    await promessa;
-  } catch (erro) {
-    const causa = erro instanceof Error ? erro.cause : undefined;
+    await promise;
+  } catch (error) {
+    const cause = error instanceof Error ? error.cause : undefined;
     return [
-      erro instanceof Error ? erro.message : String(erro),
-      causa instanceof Error ? causa.message : "",
+      error instanceof Error ? error.message : String(error),
+      cause instanceof Error ? cause.message : "",
     ].join(" | ");
   }
-  throw new Error("esperava uma falha, mas a operação teve sucesso");
+  throw new Error("expected a failure, but the operation succeeded");
 }
 
 describe("TenantDb", () => {
   let tenantDb: TenantDb;
-  let a: { barbeariaId: string; usuarioId: string; email: string };
-  let b: { barbeariaId: string; usuarioId: string; email: string };
+  let a: { barbershopId: string; userId: string; email: string };
+  let b: { barbershopId: string; userId: string; email: string };
 
-  async function montar(nome: string, email: string) {
-    const { barbeariaId } = await criarBarbearia(nome);
-    const usuarioId = await criarUsuario({
-      tenantId: barbeariaId,
+  async function assemble(name: string, email: string) {
+    const { barbershopId } = await createBarbershop(name);
+    const userId = await createUser({
+      tenantId: barbershopId,
       email,
-      papel: "dono",
+      role: "owner",
     });
-    return { barbeariaId, usuarioId, email };
+    return { barbershopId, userId, email };
   }
 
   beforeAll(async () => {
-    tenantDb = new TenantDb(conexaoRuntime());
-    a = await montar("Barbearia A", "dono-a@exemplo.com");
-    b = await montar("Barbearia B", "dono-b@exemplo.com");
+    tenantDb = new TenantDb(runtimeConnection());
+    a = await assemble("Barbearia A", "owner-a@example.com");
+    b = await assemble("Barbearia B", "owner-b@example.com");
   });
 
-  afterAll(fecharConexoes);
+  afterAll(closeConnections);
 
-  it("com o contexto de A, enxerga só linhas de A", async () => {
-    const usuarios = await tenantDb.transacao(a.barbeariaId, (tx) =>
-      tx.select({ id: usuario.id }).from(usuario),
+  it("with A's context, sees only A's rows", async () => {
+    const users = await tenantDb.transaction(a.barbershopId, (tx) =>
+      tx.select({ id: user.id }).from(user),
     );
-    expect(usuarios.map((u) => u.id)).toEqual([a.usuarioId]);
+    expect(users.map((u) => u.id)).toEqual([a.userId]);
 
-    const barbearias = await tenantDb.transacao(a.barbeariaId, (tx) =>
-      tx.select({ id: barbearia.id }).from(barbearia),
+    const barbershops = await tenantDb.transaction(a.barbershopId, (tx) =>
+      tx.select({ id: barbershop.id }).from(barbershop),
     );
-    expect(barbearias.map((x) => x.id)).toEqual([a.barbeariaId]);
+    expect(barbershops.map((x) => x.id)).toEqual([a.barbershopId]);
   });
 
-  it("sem contexto, SELECT devolve 0 linhas", async () => {
-    const resultado = await conexaoRuntime().query("select id from usuario");
-    expect(resultado.rowCount).toBe(0);
+  it("without a context, SELECT returns 0 rows", async () => {
+    const result = await runtimeConnection().query("select id from users");
+    expect(result.rowCount).toBe(0);
   });
 
-  it("sem contexto, INSERT falha pela RLS", async () => {
-    const mensagem = await mensagemDoErro(
-      conexaoRuntime().query(
-        "insert into usuario (tenant_id, nome, email, papel, situacao) values (gen_random_uuid(), 'X', 'x@exemplo.com', 'barbeiro', 'convidado')",
+  it("without a context, INSERT fails on RLS", async () => {
+    const message = await errorMessage(
+      runtimeConnection().query(
+        "insert into users (tenant_id, name, email, role, status) values (gen_random_uuid(), 'X', 'x@example.com', 'barber', 'invited')",
       ),
     );
-    expect(mensagem).toMatch(/row-level security/i);
+    expect(message).toMatch(/row-level security/i);
   });
 
-  it("a API não tem permissão para criar barbearia (só a equipe do produto)", async () => {
-    const mensagem = await mensagemDoErro(
-      conexaoRuntime().query(
-        "insert into barbearia (nome) values ('Sem permissão')",
+  it("the API has no permission to create a barbershop (only the product team)", async () => {
+    const message = await errorMessage(
+      runtimeConnection().query(
+        "insert into barbershops (name) values ('No permission')",
       ),
     );
-    expect(mensagem).toMatch(/permission denied/i);
+    expect(message).toMatch(/permission denied/i);
   });
 
-  it("o contexto de A não grava linha com o tenant de B", async () => {
-    const mensagem = await mensagemDoErro(
-      tenantDb.transacao(a.barbeariaId, (tx) =>
-        tx.insert(usuario).values({
-          tenantId: b.barbeariaId,
-          nome: "Intruso",
-          email: "intruso@exemplo.com",
-          papel: "barbeiro",
-          situacao: "convidado",
+  it("A's context cannot write a row with B's tenant", async () => {
+    const message = await errorMessage(
+      tenantDb.transaction(a.barbershopId, (tx) =>
+        tx.insert(user).values({
+          tenantId: b.barbershopId,
+          name: "Intruder",
+          email: "intruder@example.com",
+          role: "barber",
+          status: "invited",
         }),
       ),
     );
-    expect(mensagem).toMatch(/row-level security/i);
+    expect(message).toMatch(/row-level security/i);
   });
 
-  it("o contexto de A não altera linhas de B", async () => {
-    const atualizadas = await tenantDb.transacao(a.barbeariaId, (tx) =>
-      tx
-        .update(usuario)
-        .set({ nome: "Hackeado" })
-        .returning({ id: usuario.id }),
+  it("A's context cannot change B's rows", async () => {
+    const updated = await tenantDb.transaction(a.barbershopId, (tx) =>
+      tx.update(user).set({ name: "Hacked" }).returning({ id: user.id }),
     );
-    expect(atualizadas.map((u) => u.id)).toEqual([a.usuarioId]);
-    const doB = await tenantDb.transacao(b.barbeariaId, (tx) =>
-      tx.select({ nome: usuario.nome }).from(usuario),
+    expect(updated.map((u) => u.id)).toEqual([a.userId]);
+    const doB = await tenantDb.transaction(b.barbershopId, (tx) =>
+      tx.select({ name: user.name }).from(user),
     );
-    expect(doB[0]?.nome).toBe("Usuário Teste");
+    expect(doB[0]?.name).toBe("Test User");
   });
 
-  it("passa o tenant por parâmetro: valor malicioso é recusado e nada é executado", async () => {
+  it("passes the tenant as a parameter: a malicious value is refused and nothing is executed", async () => {
     await expect(
-      tenantDb.transacao("'; drop table usuario; --", (tx) =>
-        tx.select().from(usuario),
+      tenantDb.transaction("'; drop table usuario; --", (tx) =>
+        tx.select().from(user),
       ),
     ).rejects.toThrow(/tenant/i);
-    const existe = await conexaoRuntime().query(
-      "select to_regclass('public.usuario') as tabela",
+    const exists = await runtimeConnection().query(
+      "select to_regclass('public.users') as table",
     );
-    expect(existe.rows[0]).toEqual({ tabela: "usuario" });
+    expect(exists.rows[0]).toEqual({ table: "users" });
   });
 
-  it("o contexto vale só dentro da transação", async () => {
-    await tenantDb.transacao(a.barbeariaId, async (tx) => {
-      const { rows } = await tx.execute<{ valor: string }>(
-        sql`select current_setting('app.tenant_id', true) as valor`,
+  it("the context is valid only inside the transaction", async () => {
+    await tenantDb.transaction(a.barbershopId, async (tx) => {
+      const { rows } = await tx.execute<{ value: string }>(
+        sql`select current_setting('app.tenant_id', true) as value`,
       );
-      expect(rows[0]?.valor).toBe(a.barbeariaId);
+      expect(rows[0]?.value).toBe(a.barbershopId);
     });
-    const { rows } = await conexaoRuntime().query<{ valor: string | null }>(
-      "select nullif(current_setting('app.tenant_id', true), '') as valor",
+    const { rows } = await runtimeConnection().query<{ value: string | null }>(
+      "select nullif(current_setting('app.tenant_id', true), '') as value",
     );
-    expect(rows[0]?.valor).toBeNull();
+    expect(rows[0]?.value).toBeNull();
   });
 
-  describe("semTenant (funções de autenticação)", () => {
-    it("acha o usuário por e-mail sem contexto, em qualquer barbearia", async () => {
-      const doA = await tenantDb.semTenant().buscarUsuarioPorEmail(a.email);
+  describe("withoutTenant (authentication functions)", () => {
+    it("finds the user by e-mail without a context, in any barbershop", async () => {
+      const doA = await tenantDb.withoutTenant().findUserByEmail(a.email);
       expect(doA).toMatchObject({
-        id: a.usuarioId,
-        tenantId: a.barbeariaId,
-        papel: "dono",
-        situacao: "ativo",
-        tentativasFalhas: 0,
-        bloqueadoAte: null,
+        id: a.userId,
+        tenantId: a.barbershopId,
+        role: "owner",
+        status: "active",
+        failedAttempts: 0,
+        lockedUntil: null,
       });
-      const doB = await tenantDb.semTenant().buscarUsuarioPorEmail(b.email);
-      expect(doB?.tenantId).toBe(b.barbeariaId);
+      const doB = await tenantDb.withoutTenant().findUserByEmail(b.email);
+      expect(doB?.tenantId).toBe(b.barbershopId);
     });
 
-    it("devolve undefined para e-mail inexistente", async () => {
+    it("returns undefined for an unknown e-mail", async () => {
       expect(
-        await tenantDb.semTenant().buscarUsuarioPorEmail("ninguem@exemplo.com"),
+        await tenantDb.withoutTenant().findUserByEmail("nobody@example.com"),
       ).toBeUndefined();
     });
 
-    it("só expõe as três funções de autenticação", () => {
-      const metodos = Object.getOwnPropertyNames(
-        Object.getPrototypeOf(tenantDb.semTenant()),
+    it("exposes only the three authentication functions", () => {
+      const methods = Object.getOwnPropertyNames(
+        Object.getPrototypeOf(tenantDb.withoutTenant()),
       ).sort();
-      expect(metodos).toEqual([
-        "buscarSessao",
-        "buscarTokenAcesso",
-        "buscarUsuarioPorEmail",
+      expect(methods).toEqual([
         "constructor",
+        "findAccessToken",
+        "findSession",
+        "findUserByEmail",
       ]);
     });
   });

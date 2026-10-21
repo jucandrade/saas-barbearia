@@ -7,90 +7,91 @@ import {
   Text,
   View,
 } from "react-native";
-import { EuSaida } from "@barbearia/contracts";
-import { chamar, chamarSemResposta, ErroDaApi } from "../lib/api";
-import { apagarToken, lerToken } from "../lib/sessao";
+import { MeOutput } from "@barbearia/contracts";
+import { call, callWithoutResponse, ApiResponseError } from "../lib/api";
+import { eraseToken, readToken } from "../lib/session";
 
-type Estado =
-  | { fase: "carregando" }
-  | { fase: "erro"; mensagem: string }
-  | { fase: "pronto"; eu: EuSaida; token: string };
+type State =
+  | { phase: "loading" }
+  | { phase: "error"; message: string }
+  | { phase: "ready"; me: MeOutput; token: string };
 
 export default function Index() {
   const router = useRouter();
-  const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
+  const [state, setState] = useState<State>({ phase: "loading" });
 
   useEffect(() => {
-    let ativo = true;
+    let active = true;
     void (async () => {
-      const token = await lerToken();
+      const token = await readToken();
       if (token === undefined) {
-        router.replace("/entrar");
+        router.replace("/sign-in");
         return;
       }
       try {
-        const eu = await chamar("/auth/eu", { token, schema: EuSaida });
-        if (ativo) setEstado({ fase: "pronto", eu, token });
-      } catch (falha) {
-        if (!ativo) return;
-        if (falha instanceof ErroDaApi && falha.status === 401) {
-          await apagarToken();
-          router.replace("/entrar");
+        const me = await call("/auth/me", { token, schema: MeOutput });
+        if (active) setState({ phase: "ready", me, token });
+      } catch (failure) {
+        if (!active) return;
+        if (failure instanceof ApiResponseError && failure.status === 401) {
+          await eraseToken();
+          router.replace("/sign-in");
           return;
         }
-        setEstado({
-          fase: "erro",
-          mensagem: falha instanceof Error ? falha.message : "Algo deu errado.",
+        setState({
+          phase: "error",
+          message:
+            failure instanceof Error ? failure.message : "Algo deu errado.",
         });
       }
     })();
     return () => {
-      ativo = false;
+      active = false;
     };
   }, [router]);
 
-  async function sair(token: string) {
+  async function signOut(token: string) {
     try {
-      await chamarSemResposta("/auth/logout", token);
+      await callWithoutResponse("/auth/logout", token);
     } finally {
-      await apagarToken();
-      router.replace("/entrar");
+      await eraseToken();
+      router.replace("/sign-in");
     }
   }
 
-  if (estado.fase === "carregando") {
+  if (state.phase === "loading") {
     return (
-      <View style={estilos.tela}>
+      <View style={styles.screen}>
         <ActivityIndicator />
       </View>
     );
   }
-  if (estado.fase === "erro") {
+  if (state.phase === "error") {
     return (
-      <View style={estilos.tela}>
-        <Text accessibilityRole="alert">{estado.mensagem}</Text>
+      <View style={styles.screen}>
+        <Text accessibilityRole="alert">{state.message}</Text>
       </View>
     );
   }
   return (
-    <View style={estilos.tela}>
-      <Text style={estilos.titulo}>{estado.eu.barbearia.nome}</Text>
-      <Text>Olá, {estado.eu.usuario.nome}.</Text>
+    <View style={styles.screen}>
+      <Text style={styles.title}>{state.me.barbershop.name}</Text>
+      <Text>Olá, {state.me.user.name}.</Text>
       <Pressable
-        style={estilos.botao}
-        onPress={() => void sair(estado.token)}
+        style={styles.button}
+        onPress={() => void signOut(state.token)}
         accessibilityRole="button"
       >
-        <Text style={estilos.textoBotao}>Sair</Text>
+        <Text style={styles.buttonText}>Sair</Text>
       </Pressable>
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
-  tela: { flex: 1, padding: 24, justifyContent: "center", gap: 8 },
-  titulo: { fontSize: 24, fontWeight: "700" },
-  botao: {
+const styles = StyleSheet.create({
+  screen: { flex: 1, padding: 24, justifyContent: "center", gap: 8 },
+  title: { fontSize: 24, fontWeight: "700" },
+  button: {
     minHeight: 44,
     marginTop: 16,
     borderWidth: 1,
@@ -99,5 +100,5 @@ const estilos = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  textoBotao: { fontWeight: "700", fontSize: 16 },
+  buttonText: { fontWeight: "700", fontSize: 16 },
 });

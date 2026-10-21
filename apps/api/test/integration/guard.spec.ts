@@ -1,94 +1,94 @@
 import { Controller, Get, Post } from "@nestjs/common";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  Papeis,
-  Publica,
-  UsuarioAtual,
-} from "../../src/identidade/auth/decorators.js";
-import type { UsuarioAutenticado } from "../../src/identidade/http/tipos-http.js";
-import { criarApp, ORIGEM_ADMIN, type AppDeTeste } from "./helpers/app.js";
-import { fecharConexoes } from "./helpers/db.js";
-import { criarBarbearia, criarUsuario } from "./helpers/fabrica.js";
+  Roles,
+  Public,
+  CurrentUser,
+} from "../../src/identity/auth/decorators.js";
+import type { AuthenticatedUser } from "../../src/identity/http/http-types.js";
+import { createApp, ADMIN_ORIGIN, type TestApp } from "./helpers/app.js";
+import { closeConnections } from "./helpers/db.js";
+import { createBarbershop, createUser } from "./helpers/factory.js";
 
-@Controller("teste-guard")
-class RotasDeTeste {
-  @Publica()
-  @Get("publica")
-  publica(): { ok: true } {
+@Controller("test-guard")
+class TestRoutes {
+  @Public()
+  @Get("public")
+  public(): { ok: true } {
     return { ok: true };
   }
 
-  @Get("protegida")
-  protegida(
-    @UsuarioAtual() usuario: UsuarioAutenticado | undefined,
-  ): UsuarioAutenticado | undefined {
-    return usuario;
+  @Get("protected")
+  protected(
+    @CurrentUser() user: AuthenticatedUser | undefined,
+  ): AuthenticatedUser | undefined {
+    return user;
   }
 
-  @Papeis("dono")
-  @Post("so-dono")
-  soDono(): { ok: true } {
+  @Roles("owner")
+  @Post("owner-only")
+  ownerOnly(): { ok: true } {
     return { ok: true };
   }
 }
 
-describe("AuthGuard, OrigemGuard e filtro de erros", () => {
-  let t: AppDeTeste;
+describe("AuthGuard, OriginGuard and error filter", () => {
+  let t: TestApp;
   let tenantId: string;
-  let dono: string;
-  let barbeiro: string;
+  let owner: string;
+  let barber: string;
 
   beforeAll(async () => {
-    t = await criarApp({ controladores: [RotasDeTeste] });
-    ({ barbeariaId: tenantId } = await criarBarbearia());
-    dono = await criarUsuario({ tenantId, papel: "dono" });
-    barbeiro = await criarUsuario({ tenantId, papel: "barbeiro" });
+    t = await createApp({ controllers: [TestRoutes] });
+    ({ barbershopId: tenantId } = await createBarbershop());
+    owner = await createUser({ tenantId, role: "owner" });
+    barber = await createUser({ tenantId, role: "barber" });
   });
 
   afterAll(async () => {
-    await t.fechar();
-    await fecharConexoes();
+    await t.close();
+    await closeConnections();
   });
 
-  it("rota pública dispensa sessão, inclusive o /health", async () => {
-    expect((await t.http().get("/teste-guard/publica")).status).toBe(200);
+  it("a public route needs no session, including /health", async () => {
+    expect((await t.http().get("/test-guard/public")).status).toBe(200);
     expect((await t.http().get("/health")).status).toBe(200);
   });
 
-  it("rota protegida sem sessão responde 401 SESSAO_INVALIDA", async () => {
-    const r = await t.http().get("/teste-guard/protegida");
+  it("a protected route without a session answers 401 INVALID_SESSION", async () => {
+    const r = await t.http().get("/test-guard/protected");
     expect(r.status).toBe(401);
     expect(r.body).toEqual({
-      codigo: "SESSAO_INVALIDA",
-      mensagem: "Sessão inválida ou expirada. Entre novamente.",
+      code: "INVALID_SESSION",
+      message: "Sessão inválida ou expirada. Entre novamente.",
     });
   });
 
-  it("aceita Bearer e injeta usuário, papel e barbearia", async () => {
-    const token = await t.abrirSessao({ id: dono, tenantId, papel: "dono" });
+  it("accepts Bearer and injects user, role and barbershop", async () => {
+    const token = await t.openSession({ id: owner, tenantId, role: "owner" });
     const r = await t
       .http()
-      .get("/teste-guard/protegida")
+      .get("/test-guard/protected")
       .set("Authorization", `Bearer ${token}`);
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ usuarioId: dono, tenantId, papel: "dono" });
+    expect(r.body).toMatchObject({ userId: owner, tenantId, role: "owner" });
   });
 
-  it("aceita o cookie de sessão", async () => {
-    const token = await t.abrirSessao({ id: dono, tenantId, papel: "dono" });
+  it("accepts the session cookie", async () => {
+    const token = await t.openSession({ id: owner, tenantId, role: "owner" });
     const r = await t
       .http()
-      .get("/teste-guard/protegida")
-      .set("Cookie", `sessao=${token}`);
+      .get("/test-guard/protected")
+      .set("Cookie", `session=${token}`);
     expect(r.status).toBe(200);
   });
 
-  it("token inválido ou de outro formato responde 401", async () => {
+  it("an invalid token or another format answers 401", async () => {
     expect(
       (
         await t
           .http()
-          .get("/teste-guard/protegida")
+          .get("/test-guard/protected")
           .set("Authorization", "Bearer lixo")
       ).status,
     ).toBe(401);
@@ -96,87 +96,87 @@ describe("AuthGuard, OrigemGuard e filtro de erros", () => {
       (
         await t
           .http()
-          .get("/teste-guard/protegida")
+          .get("/test-guard/protected")
           .set("Authorization", "Basic abc")
       ).status,
     ).toBe(401);
   });
 
-  it("@Papeis('dono'): barbeiro recebe 403 SEM_PERMISSAO e dono passa", async () => {
-    const tokenBarbeiro = await t.abrirSessao({
-      id: barbeiro,
+  it("@Roles('owner'): a barber gets 403 NO_PERMISSION and an owner passes", async () => {
+    const tokenBarber = await t.openSession({
+      id: barber,
       tenantId,
-      papel: "barbeiro",
+      role: "barber",
     });
-    const negado = await t
+    const denied = await t
       .http()
-      .post("/teste-guard/so-dono")
-      .set("Authorization", `Bearer ${tokenBarbeiro}`);
-    expect(negado.status).toBe(403);
-    expect(negado.body).toMatchObject({ codigo: "SEM_PERMISSAO" });
+      .post("/test-guard/owner-only")
+      .set("Authorization", `Bearer ${tokenBarber}`);
+    expect(denied.status).toBe(403);
+    expect(denied.body).toMatchObject({ code: "NO_PERMISSION" });
 
-    const tokenDono = await t.abrirSessao({
-      id: dono,
+    const tokenOwner = await t.openSession({
+      id: owner,
       tenantId,
-      papel: "dono",
+      role: "owner",
     });
     expect(
       (
         await t
           .http()
-          .post("/teste-guard/so-dono")
-          .set("Authorization", `Bearer ${tokenDono}`)
+          .post("/test-guard/owner-only")
+          .set("Authorization", `Bearer ${tokenOwner}`)
       ).status,
     ).toBe(201);
   });
 
-  it("com cookie, requisição que altera estado exige a origem do admin", async () => {
-    const token = await t.abrirSessao({ id: dono, tenantId, papel: "dono" });
-    const semOrigem = await t
+  it("with a cookie, a state-changing request requires the admin origin", async () => {
+    const token = await t.openSession({ id: owner, tenantId, role: "owner" });
+    const withoutOrigin = await t
       .http()
-      .post("/teste-guard/so-dono")
-      .set("Cookie", `sessao=${token}`);
-    expect(semOrigem.status).toBe(403);
-    expect(semOrigem.body).toMatchObject({ codigo: "ORIGEM_INVALIDA" });
+      .post("/test-guard/owner-only")
+      .set("Cookie", `session=${token}`);
+    expect(withoutOrigin.status).toBe(403);
+    expect(withoutOrigin.body).toMatchObject({ code: "INVALID_ORIGIN" });
 
-    const errada = await t
+    const wrong = await t
       .http()
-      .post("/teste-guard/so-dono")
-      .set("Cookie", `sessao=${token}`)
+      .post("/test-guard/owner-only")
+      .set("Cookie", `session=${token}`)
       .set("Origin", "http://evil.example");
-    expect(errada.status).toBe(403);
+    expect(wrong.status).toBe(403);
 
-    const certa = await t
+    const right = await t
       .http()
-      .post("/teste-guard/so-dono")
-      .set("Cookie", `sessao=${token}`)
-      .set("Origin", ORIGEM_ADMIN);
-    expect(certa.status).toBe(201);
+      .post("/test-guard/owner-only")
+      .set("Cookie", `session=${token}`)
+      .set("Origin", ADMIN_ORIGIN);
+    expect(right.status).toBe(201);
   });
 
-  it("Bearer não depende de origem (app mobile)", async () => {
-    const token = await t.abrirSessao({ id: dono, tenantId, papel: "dono" });
+  it("Bearer does not depend on origin (mobile app)", async () => {
+    const token = await t.openSession({ id: owner, tenantId, role: "owner" });
     const r = await t
       .http()
-      .post("/teste-guard/so-dono")
+      .post("/test-guard/owner-only")
       .set("Authorization", `Bearer ${token}`);
     expect(r.status).toBe(201);
   });
 
-  it("rota inexistente responde 404 no formato de erro da API, com ou sem sessão", async () => {
-    const esperado = {
-      codigo: "NAO_ENCONTRADO",
-      mensagem: "Recurso não encontrado.",
+  it("a nonexistent route answers 404 in the API error format, with or without a session", async () => {
+    const expected = {
+      code: "NOT_FOUND",
+      message: "Recurso não encontrado.",
     };
-    const anonimo = await t.http().get("/nao-existe");
-    expect(anonimo.status).toBe(404);
-    expect(anonimo.body).toEqual(esperado);
-    const token = await t.abrirSessao({ id: dono, tenantId, papel: "dono" });
-    const autenticado = await t
+    const anonymous = await t.http().get("/does-not-exist");
+    expect(anonymous.status).toBe(404);
+    expect(anonymous.body).toEqual(expected);
+    const token = await t.openSession({ id: owner, tenantId, role: "owner" });
+    const authenticated = await t
       .http()
-      .get("/nao-existe")
+      .get("/does-not-exist")
       .set("Authorization", `Bearer ${token}`);
-    expect(autenticado.status).toBe(404);
-    expect(autenticado.body).toEqual(esperado);
+    expect(authenticated.status).toBe(404);
+    expect(authenticated.body).toEqual(expected);
   });
 });

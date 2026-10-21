@@ -1,9 +1,9 @@
-import { Inicio } from "./inicio";
+import { Home } from "./home";
 
 export default function Page() {
   return (
     <main>
-      <Inicio />
+      <Home />
     </main>
   );
 }

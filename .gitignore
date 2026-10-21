@@ -6,7 +6,7 @@ dist/
 coverage/
 *.log
 
-# Variáveis locais: só o .env.example é versionado
+# Local variables: only .env.example is versioned
 .env
 .env.*
 !.env.example

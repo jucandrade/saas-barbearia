@@ -1,7 +1,7 @@
 import { Controller, Get } from "@nestjs/common";
-import { Publica } from "../identidade/auth/decorators.js";
+import { Public } from "../identity/auth/decorators.js";
 
-@Publica()
+@Public()
 @Controller("health")
 export class HealthController {
   @Get()

@@ -7,7 +7,7 @@ coverage
 pnpm-lock.yaml
 next-env.d.ts
 
-# Arquivos gerados e mantidos pelo Spec Kit e pela documentação de processo
+# Files generated and maintained by Spec Kit and the process documentation
 .specify
 .claude
 specs

@@ -1,11 +1,11 @@
 {
-  "id": "89b4a083-584a-45bf-a8aa-f2215b37e103",
-  "prevId": "5c20dc11-29ae-49f5-a8ac-4c11219495dc",
+  "id": "12306b11-561d-4e59-bd51-77aae05b1109",
+  "prevId": "19ec22d0-9395-4b89-8d54-eb8eefd56c10",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.barbearia": {
-      "name": "barbearia",
+    "public.barbershops": {
+      "name": "barbershops",
       "schema": "",
       "columns": {
         "id": {
@@ -15,14 +15,14 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "nome": {
-          "name": "nome",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "criada_em": {
-          "name": "criada_em",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -34,25 +34,25 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "barbearia_isolamento": {
-          "name": "barbearia_isolamento",
+        "barbershops_isolation": {
+          "name": "barbershops_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
           "to": ["public"],
-          "using": "\"barbearia\".\"id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
-          "withCheck": "\"barbearia\".\"id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
+          "using": "\"barbershops\".\"id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
+          "withCheck": "\"barbershops\".\"id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
         }
       },
       "checkConstraints": {
-        "barbearia_nome_tamanho": {
-          "name": "barbearia_nome_tamanho",
-          "value": "char_length(\"barbearia\".\"nome\") between 1 and 120"
+        "barbershops_name_length": {
+          "name": "barbershops_name_length",
+          "value": "char_length(\"barbershops\".\"name\") between 1 and 120"
         }
       },
       "isRLSEnabled": true
     },
-    "public.evento_seguranca": {
-      "name": "evento_seguranca",
+    "public.security_events": {
+      "name": "security_events",
       "schema": "",
       "columns": {
         "id": {
@@ -68,41 +68,41 @@
           "primaryKey": false,
           "notNull": false
         },
-        "tipo": {
-          "name": "tipo",
-          "type": "tipo_evento_seguranca",
+        "type": {
+          "name": "type",
+          "type": "security_event_type",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
-        "ator_tipo": {
-          "name": "ator_tipo",
-          "type": "ator_tipo",
+        "actor_type": {
+          "name": "actor_type",
+          "type": "actor_type",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
-        "ator_usuario_id": {
-          "name": "ator_usuario_id",
+        "actor_user_id": {
+          "name": "actor_user_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-        "alvo_usuario_id": {
-          "name": "alvo_usuario_id",
+        "target_user_id": {
+          "name": "target_user_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-        "detalhe": {
-          "name": "detalhe",
+        "details": {
+          "name": "details",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
           "default": "'{}'::jsonb"
         },
-        "ocorrido_em": {
-          "name": "ocorrido_em",
+        "occurred_at": {
+          "name": "occurred_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -110,8 +110,8 @@
         }
       },
       "indexes": {
-        "evento_seguranca_tenant_idx": {
-          "name": "evento_seguranca_tenant_idx",
+        "security_events_tenant_idx": {
+          "name": "security_events_tenant_idx",
           "columns": [
             {
               "expression": "tenant_id",
@@ -120,7 +120,7 @@
               "nulls": "last"
             },
             {
-              "expression": "ocorrido_em",
+              "expression": "occurred_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -133,11 +133,11 @@
         }
       },
       "foreignKeys": {
-        "evento_seguranca_tenant_id_barbearia_id_fk": {
-          "name": "evento_seguranca_tenant_id_barbearia_id_fk",
-          "tableFrom": "evento_seguranca",
+        "security_events_tenant_id_barbershops_id_fk": {
+          "name": "security_events_tenant_id_barbershops_id_fk",
+          "tableFrom": "security_events",
           "columnsFrom": ["tenant_id"],
-          "tableTo": "barbearia",
+          "tableTo": "barbershops",
           "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
@@ -146,26 +146,26 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "evento_seguranca_leitura": {
-          "name": "evento_seguranca_leitura",
+        "security_events_read": {
+          "name": "security_events_read",
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": ["public"],
-          "using": "\"evento_seguranca\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
+          "using": "\"security_events\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
         },
-        "evento_seguranca_escrita": {
-          "name": "evento_seguranca_escrita",
+        "security_events_write": {
+          "name": "security_events_write",
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": ["public"],
-          "withCheck": "\"evento_seguranca\".\"tenant_id\" is null or \"evento_seguranca\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
+          "withCheck": "\"security_events\".\"tenant_id\" is null or \"security_events\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
         }
       },
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.sessao": {
-      "name": "sessao",
+    "public.sessions": {
+      "name": "sessions",
       "schema": "",
       "columns": {
         "id": {
@@ -181,8 +181,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "usuario_id": {
-          "name": "usuario_id",
+        "user_id": {
+          "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -193,36 +193,36 @@
           "primaryKey": false,
           "notNull": true
         },
-        "criada_em": {
-          "name": "criada_em",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "ultimo_uso_em": {
-          "name": "ultimo_uso_em",
+        "last_used_at": {
+          "name": "last_used_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "expira_em": {
-          "name": "expira_em",
+        "expires_at": {
+          "name": "expires_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "revogada_em": {
-          "name": "revogada_em",
+        "revoked_at": {
+          "name": "revoked_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         }
       },
       "indexes": {
-        "sessao_hash_unico": {
-          "name": "sessao_hash_unico",
+        "sessions_hash_unique": {
+          "name": "sessions_hash_unique",
           "columns": [
             {
               "expression": "token_hash",
@@ -236,11 +236,11 @@
           "method": "btree",
           "concurrently": false
         },
-        "sessao_usuario_idx": {
-          "name": "sessao_usuario_idx",
+        "sessions_user_idx": {
+          "name": "sessions_user_idx",
           "columns": [
             {
-              "expression": "usuario_id",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -253,20 +253,20 @@
         }
       },
       "foreignKeys": {
-        "sessao_tenant_id_barbearia_id_fk": {
-          "name": "sessao_tenant_id_barbearia_id_fk",
-          "tableFrom": "sessao",
+        "sessions_tenant_id_barbershops_id_fk": {
+          "name": "sessions_tenant_id_barbershops_id_fk",
+          "tableFrom": "sessions",
           "columnsFrom": ["tenant_id"],
-          "tableTo": "barbearia",
+          "tableTo": "barbershops",
           "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
-        "sessao_usuario_id_usuario_id_fk": {
-          "name": "sessao_usuario_id_usuario_id_fk",
-          "tableFrom": "sessao",
-          "columnsFrom": ["usuario_id"],
-          "tableTo": "usuario",
+        "sessions_user_id_users_id_fk": {
+          "name": "sessions_user_id_users_id_fk",
+          "tableFrom": "sessions",
+          "columnsFrom": ["user_id"],
+          "tableTo": "users",
           "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
@@ -275,20 +275,20 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "sessao_isolamento": {
-          "name": "sessao_isolamento",
+        "sessions_isolation": {
+          "name": "sessions_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
           "to": ["public"],
-          "using": "\"sessao\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
-          "withCheck": "\"sessao\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
+          "using": "\"sessions\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
+          "withCheck": "\"sessions\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
         }
       },
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.token_acesso": {
-      "name": "token_acesso",
+    "public.access_tokens": {
+      "name": "access_tokens",
       "schema": "",
       "columns": {
         "id": {
@@ -304,15 +304,15 @@
           "primaryKey": false,
           "notNull": true
         },
-        "usuario_id": {
-          "name": "usuario_id",
+        "user_id": {
+          "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "finalidade": {
-          "name": "finalidade",
-          "type": "finalidade_token",
+        "purpose": {
+          "name": "purpose",
+          "type": "token_purpose",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
@@ -323,26 +323,26 @@
           "primaryKey": false,
           "notNull": true
         },
-        "expira_em": {
-          "name": "expira_em",
+        "expires_at": {
+          "name": "expires_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "usado_em": {
-          "name": "usado_em",
+        "used_at": {
+          "name": "used_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "invalidado_em": {
-          "name": "invalidado_em",
+        "invalidated_at": {
+          "name": "invalidated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "criado_em": {
-          "name": "criado_em",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -350,8 +350,8 @@
         }
       },
       "indexes": {
-        "token_acesso_hash_unico": {
-          "name": "token_acesso_hash_unico",
+        "access_tokens_hash_unique": {
+          "name": "access_tokens_hash_unique",
           "columns": [
             {
               "expression": "token_hash",
@@ -365,11 +365,11 @@
           "method": "btree",
           "concurrently": false
         },
-        "token_acesso_usuario_idx": {
-          "name": "token_acesso_usuario_idx",
+        "access_tokens_user_idx": {
+          "name": "access_tokens_user_idx",
           "columns": [
             {
-              "expression": "usuario_id",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -382,20 +382,20 @@
         }
       },
       "foreignKeys": {
-        "token_acesso_tenant_id_barbearia_id_fk": {
-          "name": "token_acesso_tenant_id_barbearia_id_fk",
-          "tableFrom": "token_acesso",
+        "access_tokens_tenant_id_barbershops_id_fk": {
+          "name": "access_tokens_tenant_id_barbershops_id_fk",
+          "tableFrom": "access_tokens",
           "columnsFrom": ["tenant_id"],
-          "tableTo": "barbearia",
+          "tableTo": "barbershops",
           "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
-        "token_acesso_usuario_id_usuario_id_fk": {
-          "name": "token_acesso_usuario_id_usuario_id_fk",
-          "tableFrom": "token_acesso",
-          "columnsFrom": ["usuario_id"],
-          "tableTo": "usuario",
+        "access_tokens_user_id_users_id_fk": {
+          "name": "access_tokens_user_id_users_id_fk",
+          "tableFrom": "access_tokens",
+          "columnsFrom": ["user_id"],
+          "tableTo": "users",
           "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
@@ -404,20 +404,20 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "token_acesso_isolamento": {
-          "name": "token_acesso_isolamento",
+        "access_tokens_isolation": {
+          "name": "access_tokens_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
           "to": ["public"],
-          "using": "\"token_acesso\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
-          "withCheck": "\"token_acesso\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
+          "using": "\"access_tokens\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
+          "withCheck": "\"access_tokens\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
         }
       },
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.unidade": {
-      "name": "unidade",
+    "public.units": {
+      "name": "units",
       "schema": "",
       "columns": {
         "id": {
@@ -433,20 +433,20 @@
           "primaryKey": false,
           "notNull": true
         },
-        "nome": {
-          "name": "nome",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "fuso_horario": {
-          "name": "fuso_horario",
+        "timezone": {
+          "name": "timezone",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "criada_em": {
-          "name": "criada_em",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -454,8 +454,8 @@
         }
       },
       "indexes": {
-        "unidade_tenant_idx": {
-          "name": "unidade_tenant_idx",
+        "units_tenant_idx": {
+          "name": "units_tenant_idx",
           "columns": [
             {
               "expression": "tenant_id",
@@ -471,11 +471,11 @@
         }
       },
       "foreignKeys": {
-        "unidade_tenant_id_barbearia_id_fk": {
-          "name": "unidade_tenant_id_barbearia_id_fk",
-          "tableFrom": "unidade",
+        "units_tenant_id_barbershops_id_fk": {
+          "name": "units_tenant_id_barbershops_id_fk",
+          "tableFrom": "units",
           "columnsFrom": ["tenant_id"],
-          "tableTo": "barbearia",
+          "tableTo": "barbershops",
           "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
@@ -484,29 +484,29 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "unidade_isolamento": {
-          "name": "unidade_isolamento",
+        "units_isolation": {
+          "name": "units_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
           "to": ["public"],
-          "using": "\"unidade\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
-          "withCheck": "\"unidade\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
+          "using": "\"units\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
+          "withCheck": "\"units\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
         }
       },
       "checkConstraints": {
-        "unidade_nome_tamanho": {
-          "name": "unidade_nome_tamanho",
-          "value": "char_length(\"unidade\".\"nome\") between 1 and 120"
+        "units_name_length": {
+          "name": "units_name_length",
+          "value": "char_length(\"units\".\"name\") between 1 and 120"
         },
-        "unidade_fuso_preenchido": {
-          "name": "unidade_fuso_preenchido",
-          "value": "char_length(\"unidade\".\"fuso_horario\") > 0"
+        "unit_timezone_not_empty": {
+          "name": "unit_timezone_not_empty",
+          "value": "char_length(\"units\".\"timezone\") > 0"
         }
       },
       "isRLSEnabled": true
     },
-    "public.usuario": {
-      "name": "usuario",
+    "public.users": {
+      "name": "users",
       "schema": "",
       "columns": {
         "id": {
@@ -522,8 +522,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "nome": {
-          "name": "nome",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -534,62 +534,62 @@
           "primaryKey": false,
           "notNull": true
         },
-        "papel": {
-          "name": "papel",
-          "type": "papel_usuario",
+        "role": {
+          "name": "role",
+          "type": "user_role",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
-        "situacao": {
-          "name": "situacao",
-          "type": "situacao_usuario",
+        "status": {
+          "name": "status",
+          "type": "user_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
-        "senha_hash": {
-          "name": "senha_hash",
+        "password_hash": {
+          "name": "password_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "tentativas_falhas": {
-          "name": "tentativas_falhas",
+        "failed_attempts": {
+          "name": "failed_attempts",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
-        "bloqueado_ate": {
-          "name": "bloqueado_ate",
+        "locked_until": {
+          "name": "locked_until",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "criado_em": {
-          "name": "criado_em",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "desativado_em": {
-          "name": "desativado_em",
+        "deactivated_at": {
+          "name": "deactivated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "anonimizado_em": {
-          "name": "anonimizado_em",
+        "anonymized_at": {
+          "name": "anonymized_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         }
       },
       "indexes": {
-        "usuario_email_unico": {
-          "name": "usuario_email_unico",
+        "users_email_unique": {
+          "name": "users_email_unique",
           "columns": [
             {
               "expression": "email",
@@ -603,8 +603,8 @@
           "method": "btree",
           "concurrently": false
         },
-        "usuario_tenant_idx": {
-          "name": "usuario_tenant_idx",
+        "users_tenant_idx": {
+          "name": "users_tenant_idx",
           "columns": [
             {
               "expression": "tenant_id",
@@ -620,11 +620,11 @@
         }
       },
       "foreignKeys": {
-        "usuario_tenant_id_barbearia_id_fk": {
-          "name": "usuario_tenant_id_barbearia_id_fk",
-          "tableFrom": "usuario",
+        "users_tenant_id_barbershops_id_fk": {
+          "name": "users_tenant_id_barbershops_id_fk",
+          "tableFrom": "users",
           "columnsFrom": ["tenant_id"],
-          "tableTo": "barbearia",
+          "tableTo": "barbershops",
           "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
@@ -633,73 +633,73 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "usuario_isolamento": {
-          "name": "usuario_isolamento",
+        "users_isolation": {
+          "name": "users_isolation",
           "as": "PERMISSIVE",
           "for": "ALL",
           "to": ["public"],
-          "using": "\"usuario\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
-          "withCheck": "\"usuario\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
+          "using": "\"users\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid",
+          "withCheck": "\"users\".\"tenant_id\" = nullif(current_setting('app.tenant_id', true), '')::uuid"
         }
       },
       "checkConstraints": {
-        "usuario_nome_tamanho": {
-          "name": "usuario_nome_tamanho",
-          "value": "char_length(\"usuario\".\"nome\") between 1 and 120"
+        "users_name_length": {
+          "name": "users_name_length",
+          "value": "char_length(\"users\".\"name\") between 1 and 120"
         },
-        "usuario_email_normalizado": {
-          "name": "usuario_email_normalizado",
-          "value": "\"usuario\".\"email\" = lower(\"usuario\".\"email\")"
+        "users_email_normalized": {
+          "name": "users_email_normalized",
+          "value": "\"users\".\"email\" = lower(\"users\".\"email\")"
         },
-        "usuario_ativo_tem_senha": {
-          "name": "usuario_ativo_tem_senha",
-          "value": "\"usuario\".\"situacao\" <> 'ativo' or \"usuario\".\"senha_hash\" is not null"
+        "user_active_has_password": {
+          "name": "user_active_has_password",
+          "value": "\"users\".\"status\" <> 'active' or \"users\".\"password_hash\" is not null"
         },
-        "usuario_anonimizado_sem_dados": {
-          "name": "usuario_anonimizado_sem_dados",
-          "value": "\"usuario\".\"situacao\" <> 'anonimizado' or (\"usuario\".\"senha_hash\" is null and \"usuario\".\"anonimizado_em\" is not null)"
+        "users_anonymized_without_data": {
+          "name": "users_anonymized_without_data",
+          "value": "\"users\".\"status\" <> 'anonymized' or (\"users\".\"password_hash\" is null and \"users\".\"anonymized_at\" is not null)"
         }
       },
       "isRLSEnabled": true
     }
   },
   "enums": {
-    "public.ator_tipo": {
-      "name": "ator_tipo",
+    "public.actor_type": {
+      "name": "actor_type",
       "schema": "public",
-      "values": ["usuario", "plataforma", "sistema"]
+      "values": ["user", "platform", "system"]
     },
-    "public.tipo_evento_seguranca": {
-      "name": "tipo_evento_seguranca",
+    "public.security_event_type": {
+      "name": "security_event_type",
       "schema": "public",
       "values": [
-        "barbearia_provisionada",
-        "convite_enviado",
-        "convite_aceito",
-        "login_sucesso",
-        "login_falha",
+        "barbershop_provisioned",
+        "invitation_sent",
+        "invitation_accepted",
+        "login_success",
+        "login_failure",
         "logout",
-        "senha_recuperacao_solicitada",
-        "senha_redefinida",
-        "usuario_desativado",
-        "usuario_reativado",
-        "usuario_anonimizado"
+        "password_recovery_requested",
+        "password_reset",
+        "user_deactivated",
+        "user_reactivated",
+        "user_anonymized"
       ]
     },
-    "public.finalidade_token": {
-      "name": "finalidade_token",
+    "public.token_purpose": {
+      "name": "token_purpose",
       "schema": "public",
-      "values": ["convite", "recuperacao"]
+      "values": ["invitation", "recovery"]
     },
-    "public.papel_usuario": {
-      "name": "papel_usuario",
+    "public.user_role": {
+      "name": "user_role",
       "schema": "public",
-      "values": ["dono", "barbeiro"]
+      "values": ["owner", "barber"]
     },
-    "public.situacao_usuario": {
-      "name": "situacao_usuario",
+    "public.user_status": {
+      "name": "user_status",
       "schema": "public",
-      "values": ["convidado", "ativo", "desativado", "anonimizado"]
+      "values": ["invited", "active", "deactivated", "anonymized"]
     }
   },
   "schemas": {},

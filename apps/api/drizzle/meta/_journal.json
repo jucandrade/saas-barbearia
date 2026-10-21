@@ -5,29 +5,29 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1792613102065,
-      "tag": "0000_parched_sauron",
+      "when": 1792616132898,
+      "tag": "0000_init",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1792613142803,
-      "tag": "0001_rls-e-permissoes",
+      "when": 1792616133940,
+      "tag": "0001_rls-and-permissions",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1792613143835,
-      "tag": "0002_funcoes-de-autenticacao",
+      "when": 1792616134980,
+      "tag": "0002_auth-functions",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1792613144865,
-      "tag": "0003_gatilhos-de-integridade",
+      "when": 1792616135999,
+      "tag": "0003_integrity-triggers",
       "breakpoints": true
     }
   ]

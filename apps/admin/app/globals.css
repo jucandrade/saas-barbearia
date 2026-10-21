@@ -1,24 +1,24 @@
 :root {
-  --fundo: #ffffff;
-  --texto: #1b1b1f;
-  --texto-suave: #5b5b66;
-  --borda: #cfcfd8;
-  --destaque: #1f4fd8;
-  --destaque-texto: #ffffff;
-  --erro: #b3261e;
-  --superficie: #f4f4f7;
+  --background: #ffffff;
+  --text: #1b1b1f;
+  --text-muted: #5b5b66;
+  --border: #cfcfd8;
+  --accent: #1f4fd8;
+  --accent-text: #ffffff;
+  --error: #b3261e;
+  --surface: #f4f4f7;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fundo: #121214;
-    --texto: #f1f1f4;
-    --texto-suave: #a9a9b4;
-    --borda: #3a3a44;
-    --destaque: #7aa2ff;
-    --destaque-texto: #0b1020;
-    --erro: #ff8a80;
-    --superficie: #1c1c20;
+    --background: #121214;
+    --text: #f1f1f4;
+    --text-muted: #a9a9b4;
+    --border: #3a3a44;
+    --accent: #7aa2ff;
+    --accent-text: #0b1020;
+    --error: #ff8a80;
+    --surface: #1c1c20;
   }
 }
 
@@ -28,8 +28,8 @@
 
 body {
   margin: 0;
-  background: var(--fundo);
-  color: var(--texto);
+  background: var(--background);
+  color: var(--text);
   font-family:
     system-ui,
     -apple-system,
@@ -53,7 +53,7 @@ h1 {
 
 p {
   margin: 0 0 1rem;
-  color: var(--texto-suave);
+  color: var(--text-muted);
 }
 
 label {
@@ -62,15 +62,16 @@ label {
   font-weight: 600;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 2.75rem;
   margin-bottom: 0.25rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--borda);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: var(--fundo);
-  color: var(--texto);
+  background: var(--background);
+  color: var(--text);
   font-size: 1rem;
 }
 
@@ -80,8 +81,8 @@ button {
   margin-top: 0.75rem;
   border: 0;
   border-radius: 0.5rem;
-  background: var(--destaque);
-  color: var(--destaque-texto);
+  background: var(--accent);
+  color: var(--accent-text);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -92,26 +93,36 @@ button:disabled {
   cursor: progress;
 }
 
-.dica {
+button.secondary {
+  width: auto;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.hint {
   margin: 0 0 0.75rem;
   font-size: 0.875rem;
-  color: var(--texto-suave);
+  color: var(--text-muted);
 }
 
-.erro {
+.error {
   margin: 0.25rem 0 0.75rem;
-  color: var(--erro);
+  color: var(--error);
   font-size: 0.875rem;
 }
 
-.cartao {
+.card {
   padding: 1rem;
-  border: 1px solid var(--borda);
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background: var(--superficie);
+  background: var(--surface);
 }
 
-.cabecalho {
+.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -119,32 +130,10 @@ button:disabled {
   max-width: 28rem;
   margin: 0 auto;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--borda);
+  border-bottom: 1px solid var(--border);
 }
 
-button.secundario {
-  width: auto;
-  min-height: 2.25rem;
-  margin: 0;
-  padding: 0 0.75rem;
-  border: 1px solid var(--borda);
-  background: transparent;
-  color: var(--texto);
-}
-
-select {
-  width: 100%;
-  min-height: 2.75rem;
-  margin-bottom: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--borda);
-  border-radius: 0.5rem;
-  background: var(--fundo);
-  color: var(--texto);
-  font-size: 1rem;
-}
-
-.lista {
+.list {
   display: grid;
   gap: 0.75rem;
   margin: 1rem 0 0;
@@ -152,12 +141,12 @@ select {
   list-style: none;
 }
 
-.lista .cartao {
+.list .card {
   display: grid;
   gap: 0.25rem;
 }
 
-.acoes {
+.actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;

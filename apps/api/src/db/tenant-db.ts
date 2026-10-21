@@ -2,157 +2,152 @@ import { Inject, Injectable } from "@nestjs/common";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import type { Pool } from "pg";
-import type { Papel, SituacaoUsuario } from "@barbearia/domain";
+import type { Role, UserStatus } from "@barbearia/domain";
 import * as schema from "./schema/index.js";
 
 export const POOL = Symbol("POOL");
 
-export type Banco = NodePgDatabase<typeof schema>;
-export type Transacao = Parameters<Parameters<Banco["transaction"]>[0]>[0];
+export type Database = NodePgDatabase<typeof schema>;
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export interface UsuarioParaLogin {
+export interface UserForLogin {
   id: string;
   tenantId: string;
-  papel: Papel;
-  situacao: SituacaoUsuario;
-  senhaHash: string | null;
-  tentativasFalhas: number;
-  bloqueadoAte: Date | null;
+  role: Role;
+  status: UserStatus;
+  passwordHash: string | null;
+  failedAttempts: number;
+  lockedUntil: Date | null;
 }
 
-export interface SessaoEncontrada {
-  sessaoId: string;
+export interface FoundSession {
+  sessionId: string;
   tenantId: string;
-  usuarioId: string;
-  expiraEm: Date;
-  ultimoUsoEm: Date;
-  revogadaEm: Date | null;
-  papel: Papel;
-  situacao: SituacaoUsuario;
+  userId: string;
+  expiresAt: Date;
+  lastUsedAt: Date;
+  revokedAt: Date | null;
+  role: Role;
+  status: UserStatus;
 }
 
-export interface TokenAcessoEncontrado {
+export interface FoundAccessToken {
   id: string;
   tenantId: string;
-  usuarioId: string;
-  expiraEm: Date;
-  usadoEm: Date | null;
-  invalidadoEm: Date | null;
+  userId: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  invalidatedAt: Date | null;
 }
 
 /**
- * As três consultas que precisam rodar antes de conhecer o tenant (login,
- * sessão, convite e recuperação). Chamam as funções `auth_*` do banco e não
- * oferecem nenhum outro acesso fora da RLS (R3).
+ * The three lookups that must run before the tenant is known (login,
+ * session, invitation and recovery). They call the database `auth_*` functions and
+ * offer no other access outside RLS (R3).
  */
-export class BuscasDeAutenticacao {
+export class AuthLookups {
   constructor(private readonly pool: Pool) {}
 
-  async buscarUsuarioPorEmail(
-    email: string,
-  ): Promise<UsuarioParaLogin | undefined> {
+  async findUserByEmail(email: string): Promise<UserForLogin | undefined> {
     const { rows } = await this.pool.query<{
       id: string;
       tenant_id: string;
-      papel: Papel;
-      situacao: SituacaoUsuario;
-      senha_hash: string | null;
-      tentativas_falhas: number;
-      bloqueado_ate: Date | null;
-    }>("select * from auth_buscar_usuario_por_email($1)", [email]);
+      role: Role;
+      status: UserStatus;
+      password_hash: string | null;
+      failed_attempts: number;
+      locked_until: Date | null;
+    }>("select * from auth_find_user_by_email($1)", [email]);
     const r = rows[0];
     return r === undefined
       ? undefined
       : {
           id: r.id,
           tenantId: r.tenant_id,
-          papel: r.papel,
-          situacao: r.situacao,
-          senhaHash: r.senha_hash,
-          tentativasFalhas: r.tentativas_falhas,
-          bloqueadoAte: r.bloqueado_ate,
+          role: r.role,
+          status: r.status,
+          passwordHash: r.password_hash,
+          failedAttempts: r.failed_attempts,
+          lockedUntil: r.locked_until,
         };
   }
 
-  async buscarSessao(tokenHash: Buffer): Promise<SessaoEncontrada | undefined> {
+  async findSession(tokenHash: Buffer): Promise<FoundSession | undefined> {
     const { rows } = await this.pool.query<{
-      sessao_id: string;
+      session_id: string;
       tenant_id: string;
-      usuario_id: string;
-      expira_em: Date;
-      ultimo_uso_em: Date;
-      revogada_em: Date | null;
-      papel: Papel;
-      situacao: SituacaoUsuario;
-    }>("select * from auth_buscar_sessao($1)", [tokenHash]);
+      user_id: string;
+      expires_at: Date;
+      last_used_at: Date;
+      revoked_at: Date | null;
+      role: Role;
+      status: UserStatus;
+    }>("select * from auth_find_session($1)", [tokenHash]);
     const r = rows[0];
     return r === undefined
       ? undefined
       : {
-          sessaoId: r.sessao_id,
+          sessionId: r.session_id,
           tenantId: r.tenant_id,
-          usuarioId: r.usuario_id,
-          expiraEm: r.expira_em,
-          ultimoUsoEm: r.ultimo_uso_em,
-          revogadaEm: r.revogada_em,
-          papel: r.papel,
-          situacao: r.situacao,
+          userId: r.user_id,
+          expiresAt: r.expires_at,
+          lastUsedAt: r.last_used_at,
+          revokedAt: r.revoked_at,
+          role: r.role,
+          status: r.status,
         };
   }
 
-  async buscarTokenAcesso(
+  async findAccessToken(
     tokenHash: Buffer,
-    finalidade: "convite" | "recuperacao",
-  ): Promise<TokenAcessoEncontrado | undefined> {
+    purpose: "invitation" | "recovery",
+  ): Promise<FoundAccessToken | undefined> {
     const { rows } = await this.pool.query<{
       id: string;
       tenant_id: string;
-      usuario_id: string;
-      expira_em: Date;
-      usado_em: Date | null;
-      invalidado_em: Date | null;
-    }>("select * from auth_buscar_token_acesso($1, $2)", [
-      tokenHash,
-      finalidade,
-    ]);
+      user_id: string;
+      expires_at: Date;
+      used_at: Date | null;
+      invalidated_at: Date | null;
+    }>("select * from auth_find_access_token($1, $2)", [tokenHash, purpose]);
     const r = rows[0];
     return r === undefined
       ? undefined
       : {
           id: r.id,
           tenantId: r.tenant_id,
-          usuarioId: r.usuario_id,
-          expiraEm: r.expira_em,
-          usadoEm: r.usado_em,
-          invalidadoEm: r.invalidado_em,
+          userId: r.user_id,
+          expiresAt: r.expires_at,
+          usedAt: r.used_at,
+          invalidatedAt: r.invalidated_at,
         };
   }
 }
 
 /**
- * Único caminho de acesso aos dados de negócio. Toda consulta roda numa
- * transação com `app.tenant_id` definido; sem isso a RLS devolve zero linhas
+ * The only way to reach business data. Every query runs in a transaction
+ * with `app.tenant_id` set; without it RLS returns zero rows
  * (falha fechada, FR-017).
  */
 @Injectable()
 export class TenantDb {
-  private readonly banco: Banco;
+  private readonly database: Database;
 
   constructor(@Inject(POOL) private readonly pool: Pool) {
-    this.banco = drizzle(pool, { schema });
+    this.database = drizzle(pool, { schema });
   }
 
-  async transacao<T>(
+  async transaction<T>(
     tenantId: string,
-    fn: (tx: Transacao) => Promise<T>,
+    fn: (tx: Transaction) => Promise<T>,
   ): Promise<T> {
     if (!UUID.test(tenantId)) {
-      throw new Error("tenantId inválido: esperado um UUID");
+      throw new Error("invalid tenantId: expected a UUID");
     }
-    return this.banco.transaction(async (tx) => {
-      // Parâmetro, nunca concatenação; `true` limita o valor à transação.
+    return this.database.transaction(async (tx) => {
+      // Parameter, never concatenation; `true` scopes the value to the transaction.
       await tx.execute(
         sql`select set_config('app.tenant_id', ${tenantId}, true)`,
       );
@@ -160,7 +155,7 @@ export class TenantDb {
     });
   }
 
-  semTenant(): BuscasDeAutenticacao {
-    return new BuscasDeAutenticacao(this.pool);
+  withoutTenant(): AuthLookups {
+    return new AuthLookups(this.pool);
   }
 }

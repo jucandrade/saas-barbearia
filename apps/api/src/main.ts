@@ -1,13 +1,13 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
-import { lerEnv } from "./config/env.js";
+import { readEnv } from "./config/env.js";
 
 async function bootstrap(): Promise<void> {
-  const env = lerEnv();
+  const env = readEnv();
   const app = await NestFactory.create(AppModule);
-  // O admin (outra porta) chama a API com o cookie de sessão: precisa de CORS com credenciais.
+  // The admin (another port) calls the API with the session cookie: it needs CORS with credentials.
   app.enableCors({ origin: env.adminBaseUrl, credentials: true });
-  await app.listen(env.porta);
+  await app.listen(env.port);
 }
 
 void bootstrap();

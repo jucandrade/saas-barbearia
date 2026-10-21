@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { lerEnv } from "../src/config/env.js";
+import { readEnv } from "../src/config/env.js";
 
-describe("lerEnv", () => {
-  it("aplica os padrões de desenvolvimento", () => {
-    const env = lerEnv({});
-    expect(env.porta).toBe(3000);
+describe("readEnv", () => {
+  it("applies the development defaults", () => {
+    const env = readEnv({});
+    expect(env.port).toBe(3000);
     expect(env.databaseUrl).toBe(
       "postgres://app_runtime:app_runtime@localhost:5432/barbearia",
     );
@@ -13,8 +13,9 @@ describe("lerEnv", () => {
     );
     expect(env.smtpUrl).toBe("smtp://localhost:1025");
     expect(env.adminBaseUrl).toBe("http://localhost:3001");
-    expect(env.cookieSeguro).toBe(false);
-    expect(env.limitePorMinuto).toBe(20);
+    expect(env.secureCookie).toBe(false);
+    expect(env.limitPerMinute).toBe(20);
+    expect(env.recoveryFloorMs).toBe(250);
     expect(env.argon2).toEqual({
       memoryCost: 19456,
       timeCost: 2,
@@ -22,14 +23,14 @@ describe("lerEnv", () => {
     });
   });
 
-  it("deriva as URLs do banco das variáveis POSTGRES_*", () => {
-    const env = lerEnv({ POSTGRES_PORT: "5434", POSTGRES_DB: "teste" });
-    expect(env.databaseUrl).toContain("@localhost:5434/teste");
-    expect(env.databaseAdminUrl).toContain("@localhost:5434/teste");
+  it("derives the database URLs from the POSTGRES_* variables", () => {
+    const env = readEnv({ POSTGRES_PORT: "5434", POSTGRES_DB: "test" });
+    expect(env.databaseUrl).toContain("@localhost:5434/test");
+    expect(env.databaseAdminUrl).toContain("@localhost:5434/test");
   });
 
-  it("respeita URLs explícitas e codifica senhas derivadas", () => {
-    const env = lerEnv({
+  it("respects explicit URLs and encodes derived passwords", () => {
+    const env = readEnv({
       DATABASE_URL: "postgres://x:y@host:1/db",
       POSTGRES_PASSWORD: "a b/c",
     });
@@ -37,16 +38,16 @@ describe("lerEnv", () => {
     expect(env.databaseAdminUrl).toContain("a%20b%2Fc");
   });
 
-  it("remove a barra final de ADMIN_BASE_URL", () => {
+  it("strips the trailing slash from ADMIN_BASE_URL", () => {
     expect(
-      lerEnv({ ADMIN_BASE_URL: "https://admin.exemplo.com/" }).adminBaseUrl,
-    ).toBe("https://admin.exemplo.com");
+      readEnv({ ADMIN_BASE_URL: "https://admin.example.com/" }).adminBaseUrl,
+    ).toBe("https://admin.example.com");
   });
 
-  it("falha com mensagem clara para valor inválido", () => {
-    expect(() => lerEnv({ SESSION_COOKIE_SECURE: "talvez" })).toThrow(
-      /Configuração de ambiente inválida.*SESSION_COOKIE_SECURE/,
+  it("fails with a clear message for an invalid value", () => {
+    expect(() => readEnv({ SESSION_COOKIE_SECURE: "maybe" })).toThrow(
+      /Invalid environment configuration.*SESSION_COOKIE_SECURE/,
     );
-    expect(() => lerEnv({ PORT: "abc" })).toThrow(/PORT/);
+    expect(() => readEnv({ PORT: "abc" })).toThrow(/PORT/);
   });
 });

@@ -1,0 +1,131 @@
+import {
+  barbershop,
+  securityEvent,
+  session,
+  accessToken,
+  unit,
+  user,
+} from "../../../src/db/schema/index.js";
+import {
+  generateToken,
+  hashToken,
+} from "../../../src/identity/security/tokens.js";
+import { withTenantAdmin, adminConnection, newUuid } from "./db.js";
+
+export interface BarbershopCreated {
+  barbershopId: string;
+  unitId: string;
+}
+
+/** Creates a barbershop and its initial unit (the UUID is born in the application, before the INSERTs). */
+export async function createBarbershop(
+  name = "Barbearia Teste",
+  timezone = "America/Sao_Paulo",
+): Promise<BarbershopCreated> {
+  const barbershopId = newUuid();
+  const unitId = newUuid();
+  await withTenantAdmin(barbershopId, async (tx) => {
+    await tx.insert(barbershop).values({ id: barbershopId, name });
+    await tx.insert(unit).values({
+      id: unitId,
+      tenantId: barbershopId,
+      name: "Main",
+      timezone: timezone,
+    });
+  });
+  return { barbershopId, unitId };
+}
+
+export interface UserToCreate {
+  tenantId: string;
+  name?: string;
+  email?: string;
+  role?: "owner" | "barber";
+  status?: "invited" | "active" | "deactivated";
+  passwordHash?: string | null;
+}
+
+export async function createUser(data: UserToCreate): Promise<string> {
+  const id = newUuid();
+  const status = data.status ?? "active";
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(user).values({
+      id,
+      tenantId: data.tenantId,
+      name: data.name ?? "Test User",
+      email: data.email ?? `${id}@example.com`,
+      role: data.role ?? "barber",
+      status,
+      passwordHash:
+        data.passwordHash === undefined
+          ? status === "active" || status === "deactivated"
+            ? "test-hash"
+            : null
+          : data.passwordHash,
+    });
+  });
+  return id;
+}
+
+export interface TokenToCreate {
+  tenantId: string;
+  userId: string;
+  purpose?: "invitation" | "recovery";
+  expiresAt: Date;
+  usedAt?: Date | null;
+  invalidatedAt?: Date | null;
+}
+
+/** Creates an access token straight in the database and returns the plain token. */
+export async function createAccessToken(data: TokenToCreate): Promise<string> {
+  const token = generateToken();
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(accessToken).values({
+      tenantId: data.tenantId,
+      userId: data.userId,
+      purpose: data.purpose ?? "invitation",
+      tokenHash: hashToken(token),
+      expiresAt: data.expiresAt,
+      usedAt: data.usedAt ?? null,
+      invalidatedAt: data.invalidatedAt ?? null,
+    });
+  });
+  return token;
+}
+
+/** Creates a session straight in the database (bypassing login) and returns the plain token. */
+export async function createSessionInDatabase(data: {
+  tenantId: string;
+  userId: string;
+  expiresAt?: Date;
+}): Promise<string> {
+  const token = generateToken();
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(session).values({
+      tenantId: data.tenantId,
+      userId: data.userId,
+      tokenHash: hashToken(token),
+      expiresAt: data.expiresAt ?? new Date(Date.now() + 60 * 60 * 1000),
+    });
+  });
+  return token;
+}
+
+/** Creates a security event straight in the database, for the isolation tests. */
+export async function createEventInDatabase(
+  tenantId: string | null,
+): Promise<void> {
+  if (tenantId === null) {
+    await adminConnection().query(
+      "insert into security_events (tenant_id, type, actor_type) values (null, 'login_failure', 'system')",
+    );
+    return;
+  }
+  await withTenantAdmin(tenantId, async (tx) => {
+    await tx.insert(securityEvent).values({
+      tenantId,
+      type: "login_success",
+      actorType: "system",
+    });
+  });
+}

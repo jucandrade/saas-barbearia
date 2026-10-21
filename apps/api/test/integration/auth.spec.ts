@@ -1,143 +1,147 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { Erro, EuSaida, SessaoSaida } from "@barbearia/contracts";
+import { ErrorBody, MeOutput, SessionOutput } from "@barbearia/contracts";
 import { eq } from "drizzle-orm";
-import { eventoSeguranca, usuario } from "../../src/db/schema/index.js";
-import { SenhaService } from "../../src/identidade/seguranca/senha.service.js";
-import { criarApp, ORIGEM_ADMIN, type AppDeTeste } from "./helpers/app.js";
-import { comTenantAdmin, conexaoSuper, fecharConexoes } from "./helpers/db.js";
-import { criarBarbearia, criarUsuario } from "./helpers/fabrica.js";
+import { securityEvent, user } from "../../src/db/schema/index.js";
+import { PasswordService } from "../../src/identity/security/password.service.js";
+import { createApp, ADMIN_ORIGIN, type TestApp } from "./helpers/app.js";
+import {
+  withTenantAdmin,
+  superConnection,
+  closeConnections,
+} from "./helpers/db.js";
+import { createBarbershop, createUser } from "./helpers/factory.js";
 
-const SENHA = "cadeira-de-barbeiro";
-const HORA = 60 * 60 * 1000;
-const DIA = 24 * HORA;
-const MINUTO = 60 * 1000;
-const CREDENCIAIS_INVALIDAS = {
-  codigo: "CREDENCIAIS_INVALIDAS",
-  mensagem: "E-mail ou senha incorretos, ou acesso temporariamente bloqueado.",
+const PASSWORD = "barber-chair-secret";
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+const MINUTE = 60 * 1000;
+const INVALID_CREDENTIALS = {
+  code: "INVALID_CREDENTIALS",
+  message: "E-mail ou senha incorretos, ou acesso temporariamente bloqueado.",
 };
 
 describe("POST /auth/login e /auth/logout", () => {
-  let t: AppDeTeste;
+  let t: TestApp;
   let hash: string;
-  let contador = 0;
+  let counter = 0;
 
   beforeAll(async () => {
-    t = await criarApp();
-    hash = await t.app.get(SenhaService).hash(SENHA);
+    t = await createApp();
+    hash = await t.app.get(PasswordService).hash(PASSWORD);
   });
 
   afterAll(async () => {
-    await t.fechar();
-    await fecharConexoes();
+    await t.close();
+    await closeConnections();
   });
 
-  async function conta(
-    opcoes: {
-      papel?: "dono" | "barbeiro";
-      situacao?: "convidado" | "ativo" | "desativado";
+  async function account(
+    options: {
+      role?: "owner" | "barber";
+      status?: "invited" | "active" | "deactivated";
     } = {},
   ) {
-    contador += 1;
-    const { barbeariaId: tenantId } = await criarBarbearia(
-      `Auth ${String(contador)}`,
+    counter += 1;
+    const { barbershopId: tenantId } = await createBarbershop(
+      `Auth ${String(counter)}`,
     );
-    const situacao = opcoes.situacao ?? "ativo";
-    const email = `conta-auth-${String(contador)}@exemplo.com`;
-    const id = await criarUsuario({
+    const status = options.status ?? "active";
+    const email = `account-auth-${String(counter)}@example.com`;
+    const id = await createUser({
       tenantId,
       email,
-      nome: "Ana Souza",
-      papel: opcoes.papel ?? "barbeiro",
-      situacao,
-      senhaHash: situacao === "convidado" ? null : hash,
+      name: "Ana Souza",
+      role: options.role ?? "barber",
+      status,
+      passwordHash: status === "invited" ? null : hash,
     });
     return { id, tenantId, email };
   }
 
-  const entrar = (
+  const signIn = (
     email: string,
-    senha: string,
-    cliente: "web" | "mobile" = "web",
-  ) => t.http().post("/auth/login").send({ email, senha, cliente });
+    password: string,
+    client: "web" | "mobile" = "web",
+  ) => t.http().post("/auth/login").send({ email, password, client });
 
-  const estadoNoBanco = async (c: { id: string; tenantId: string }) => {
-    const [u] = await comTenantAdmin(c.tenantId, (tx) =>
-      tx.select().from(usuario).where(eq(usuario.id, c.id)),
+  const stateInDatabase = async (c: { id: string; tenantId: string }) => {
+    const [u] = await withTenantAdmin(c.tenantId, (tx) =>
+      tx.select().from(user).where(eq(user.id, c.id)),
     );
     return u;
   };
 
-  describe("login com sucesso", () => {
-    it("web: define o cookie HttpOnly e não devolve o token no corpo", async () => {
-      const c = await conta({ papel: "dono" });
-      const r = await entrar(c.email, SENHA, "web");
+  describe("successful login", () => {
+    it("web: sets the HttpOnly cookie and does not return the token in the body", async () => {
+      const c = await account({ role: "owner" });
+      const r = await signIn(c.email, PASSWORD, "web");
       expect(r.status).toBe(200);
-      const sessao = SessaoSaida.parse(r.body);
-      expect(sessao.token).toBeUndefined();
-      expect(sessao.usuario).toMatchObject({
+      const session = SessionOutput.parse(r.body);
+      expect(session.token).toBeUndefined();
+      expect(session.user).toMatchObject({
         id: c.id,
-        papel: "dono",
-        situacao: "ativo",
-        barbeariaId: c.tenantId,
+        role: "owner",
+        status: "active",
+        barbershopId: c.tenantId,
       });
       const cookie =
         (r.headers["set-cookie"] as unknown as string[] | undefined)?.[0] ?? "";
-      expect(cookie).toMatch(/^sessao=[A-Za-z0-9_%-]+;/);
+      expect(cookie).toMatch(/^session=[A-Za-z0-9_%-]+;/);
       expect(cookie).toContain("HttpOnly");
       expect(cookie).toContain("SameSite=Lax");
 
       const eu = await t
         .http()
-        .get("/auth/eu")
+        .get("/auth/me")
         .set("Cookie", cookie.split(";")[0] ?? "");
-      expect(EuSaida.parse(eu.body).usuario.id).toBe(c.id);
+      expect(MeOutput.parse(eu.body).user.id).toBe(c.id);
     });
 
-    it("mobile: devolve o token no corpo e não define cookie; o Bearer funciona", async () => {
-      const c = await conta();
-      const r = await entrar(c.email, SENHA, "mobile");
+    it("mobile: returns the token in the body and sets no cookie; Bearer works", async () => {
+      const c = await account();
+      const r = await signIn(c.email, PASSWORD, "mobile");
       expect(r.status).toBe(200);
       expect(r.headers["set-cookie"]).toBeUndefined();
-      const sessao = SessaoSaida.parse(r.body);
+      const session = SessionOutput.parse(r.body);
       const eu = await t
         .http()
-        .get("/auth/eu")
-        .set("Authorization", `Bearer ${sessao.token ?? ""}`);
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${session.token ?? ""}`);
       expect(eu.status).toBe(200);
     });
 
-    it("aceita o e-mail com maiúsculas e espaços", async () => {
-      const c = await conta();
-      expect((await entrar(`  ${c.email.toUpperCase()} `, SENHA)).status).toBe(
-        200,
-      );
+    it("accepts the e-mail with uppercase and spaces", async () => {
+      const c = await account();
+      expect(
+        (await signIn(`  ${c.email.toUpperCase()} `, PASSWORD)).status,
+      ).toBe(200);
     });
 
-    it("dados malformados respondem 400 DADOS_INVALIDOS, sem revelar nada sobre a conta", async () => {
+    it("malformed data answers 400 INVALID_DATA, revealing nothing about the account", async () => {
       const r = await t
         .http()
         .post("/auth/login")
-        .send({ email: "nao-e-email", senha: "x", cliente: "web" });
+        .send({ email: "nao-e-email", password: "x", client: "web" });
       expect(r.status).toBe(400);
-      expect(Erro.parse(r.body).codigo).toBe("DADOS_INVALIDOS");
+      expect(ErrorBody.parse(r.body).code).toBe("INVALID_DATA");
     });
   });
 
   describe("logout", () => {
-    it("revoga a sessão: o mesmo token passa a dar 401", async () => {
-      const c = await conta();
-      const { token } = SessaoSaida.parse(
-        (await entrar(c.email, SENHA, "mobile")).body,
+    it("revokes the session: the same token now gets 401", async () => {
+      const c = await account();
+      const { token } = SessionOutput.parse(
+        (await signIn(c.email, PASSWORD, "mobile")).body,
       );
       const auth = { Authorization: `Bearer ${token ?? ""}` };
-      expect((await t.http().get("/auth/eu").set(auth)).status).toBe(200);
+      expect((await t.http().get("/auth/me").set(auth)).status).toBe(200);
       expect((await t.http().post("/auth/logout").set(auth)).status).toBe(204);
-      expect((await t.http().get("/auth/eu").set(auth)).status).toBe(401);
+      expect((await t.http().get("/auth/me").set(auth)).status).toBe(401);
     });
 
-    it("web: limpa o cookie e exige a origem do admin", async () => {
-      const c = await conta();
-      const login = await entrar(c.email, SENHA, "web");
+    it("web: clears the cookie and requires the admin origin", async () => {
+      const c = await account();
+      const login = await signIn(c.email, PASSWORD, "web");
       const cookie =
         ((login.headers["set-cookie"] as unknown as string[])[0] ?? "").split(
           ";",
@@ -150,222 +154,217 @@ describe("POST /auth/login e /auth/logout", () => {
         .http()
         .post("/auth/logout")
         .set("Cookie", cookie)
-        .set("Origin", ORIGEM_ADMIN);
+        .set("Origin", ADMIN_ORIGIN);
       expect(r.status).toBe(204);
-      const limpo =
+      const clean =
         (r.headers["set-cookie"] as unknown as string[] | undefined)?.[0] ?? "";
-      expect(limpo).toContain("sessao=;");
-      expect(limpo).toContain("Max-Age=0");
+      expect(clean).toContain("session=;");
+      expect(clean).toContain("Max-Age=0");
       expect(
-        (await t.http().get("/auth/eu").set("Cookie", cookie)).status,
+        (await t.http().get("/auth/me").set("Cookie", cookie)).status,
       ).toBe(401);
     });
 
-    it("sem sessão responde 401", async () => {
+    it("without a session answers 401", async () => {
       expect((await t.http().post("/auth/logout")).status).toBe(401);
     });
   });
 
-  describe("falhas indistinguíveis (FR-014, SC-005)", () => {
-    it("e-mail inexistente, senha errada, convidado, desativado e bloqueada respondem o mesmo 401", async () => {
-      const ativa = await conta();
-      const convidado = await conta({ situacao: "convidado" });
-      const desativado = await conta({ situacao: "desativado" });
-      const bloqueada = await conta();
+  describe("indistinguishable failures (FR-014, SC-005)", () => {
+    it("unknown e-mail, wrong password, invited, deactivated and locked all answer the same 401", async () => {
+      const active = await account();
+      const invited = await account({ status: "invited" });
+      const deactivated = await account({ status: "deactivated" });
+      const locked = await account();
       for (let i = 0; i < 5; i += 1) {
-        await entrar(bloqueada.email, "senha-errada");
+        await signIn(locked.email, "password-wrong");
       }
 
-      const respostas = [
-        await entrar("ninguem-auth@exemplo.com", SENHA),
-        await entrar(ativa.email, "senha-errada"),
-        await entrar(convidado.email, SENHA),
-        await entrar(desativado.email, SENHA),
-        await entrar(bloqueada.email, SENHA), // senha CERTA, mas a conta está bloqueada
+      const responses = [
+        await signIn("nobody-auth@example.com", PASSWORD),
+        await signIn(active.email, "password-wrong"),
+        await signIn(invited.email, PASSWORD),
+        await signIn(deactivated.email, PASSWORD),
+        await signIn(locked.email, PASSWORD), // CORRECT password, but the account is locked
       ];
-      for (const r of respostas) {
+      for (const r of responses) {
         expect(r.status).toBe(401);
-        expect(r.body).toEqual(CREDENCIAIS_INVALIDAS);
+        expect(r.body).toEqual(INVALID_CREDENTIALS);
         expect(r.headers["set-cookie"]).toBeUndefined();
       }
     });
 
-    it("e-mail inexistente também gasta o tempo de uma verificação de senha", async () => {
-      const espiao = vi.spyOn(
-        t.app.get(SenhaService),
-        "verificarSenhaFicticia",
-      );
-      await entrar("nunca-existiu@exemplo.com", SENHA);
-      expect(espiao).toHaveBeenCalledOnce();
-      espiao.mockRestore();
+    it("an unknown e-mail also spends the time of a password verification", async () => {
+      const spy = vi.spyOn(t.app.get(PasswordService), "verifyDummyPassword");
+      await signIn("never-existed@example.com", PASSWORD);
+      expect(spy).toHaveBeenCalledOnce();
+      spy.mockRestore();
     });
   });
 
-  describe("bloqueio por conta (FR-015)", () => {
-    it("a 5ª falha seguida bloqueia por 15 minutos; depois libera e o sucesso zera o contador", async () => {
-      const c = await conta();
+  describe("per-account lockout (FR-015)", () => {
+    it("the 5th consecutive failure locks for 15 minutes; then it releases and success resets the counter", async () => {
+      const c = await account();
       for (let i = 0; i < 4; i += 1) {
-        await entrar(c.email, "errada");
+        await signIn(c.email, "not-the-password");
       }
-      expect((await estadoNoBanco(c))?.tentativasFalhas).toBe(4);
-      await entrar(c.email, "errada");
-      const bloqueada = await estadoNoBanco(c);
-      expect(bloqueada?.tentativasFalhas).toBe(5);
-      expect(bloqueada?.bloqueadoAte).toEqual(
-        new Date(t.relogio.agora().getTime() + 15 * MINUTO),
+      expect((await stateInDatabase(c))?.failedAttempts).toBe(4);
+      await signIn(c.email, "not-the-password");
+      const locked = await stateInDatabase(c);
+      expect(locked?.failedAttempts).toBe(5);
+      expect(locked?.lockedUntil).toEqual(
+        new Date(t.clock.now().getTime() + 15 * MINUTE),
       );
 
-      t.relogio.avancar(14 * MINUTO);
-      expect((await entrar(c.email, SENHA)).status).toBe(401);
-      t.relogio.avancar(2 * MINUTO);
-      expect((await entrar(c.email, SENHA)).status).toBe(200);
-      const livre = await estadoNoBanco(c);
-      expect(livre?.tentativasFalhas).toBe(0);
-      expect(livre?.bloqueadoAte).toBeNull();
+      t.clock.advance(14 * MINUTE);
+      expect((await signIn(c.email, PASSWORD)).status).toBe(401);
+      t.clock.advance(2 * MINUTE);
+      expect((await signIn(c.email, PASSWORD)).status).toBe(200);
+      const free = await stateInDatabase(c);
+      expect(free?.failedAttempts).toBe(0);
+      expect(free?.lockedUntil).toBeNull();
     });
 
-    it("um login válido no meio zera as falhas anteriores", async () => {
-      const c = await conta();
-      await entrar(c.email, "errada");
-      await entrar(c.email, "errada");
-      expect((await entrar(c.email, SENHA)).status).toBe(200);
-      expect((await estadoNoBanco(c))?.tentativasFalhas).toBe(0);
+    it("a valid login in between resets the earlier failures", async () => {
+      const c = await account();
+      await signIn(c.email, "not-the-password");
+      await signIn(c.email, "not-the-password");
+      expect((await signIn(c.email, PASSWORD)).status).toBe(200);
+      expect((await stateInDatabase(c))?.failedAttempts).toBe(0);
     });
 
-    it("tentativas durante o bloqueio não o estendem", async () => {
-      const c = await conta();
+    it("attempts during the lockout do not extend it", async () => {
+      const c = await account();
       for (let i = 0; i < 5; i += 1) {
-        await entrar(c.email, "errada");
+        await signIn(c.email, "not-the-password");
       }
-      const antes = (await estadoNoBanco(c))?.bloqueadoAte;
-      t.relogio.avancar(5 * MINUTO);
-      await entrar(c.email, "errada");
-      expect((await estadoNoBanco(c))?.bloqueadoAte).toEqual(antes);
-      t.relogio.avancar(-5 * MINUTO);
+      const before = (await stateInDatabase(c))?.lockedUntil;
+      t.clock.advance(5 * MINUTE);
+      await signIn(c.email, "not-the-password");
+      expect((await stateInDatabase(c))?.lockedUntil).toEqual(before);
+      t.clock.advance(-5 * MINUTE);
     });
 
-    it("tentativas simultâneas não furam o contador (a conta é travada durante a verificação)", async () => {
-      const c = await conta();
+    it("simultaneous attempts do not bypass the counter (the account is locked during verification)", async () => {
+      const c = await account();
       await Promise.all(
-        Array.from({ length: 8 }, () => entrar(c.email, "errada")),
+        Array.from({ length: 8 }, () => signIn(c.email, "not-the-password")),
       );
-      const u = await estadoNoBanco(c);
-      expect(u?.tentativasFalhas).toBe(5);
-      expect(u?.bloqueadoAte).not.toBeNull();
+      const u = await stateInDatabase(c);
+      expect(u?.failedAttempts).toBe(5);
+      expect(u?.lockedUntil).not.toBeNull();
     });
   });
 
-  describe("expiração da sessão por papel (FR-013)", () => {
-    it("dono: 12 horas de inatividade", async () => {
-      const c = await conta({ papel: "dono" });
-      const { token } = SessaoSaida.parse(
-        (await entrar(c.email, SENHA, "mobile")).body,
+  describe("session expiration by role (FR-013)", () => {
+    it("owner: 12 hours of inactivity", async () => {
+      const c = await account({ role: "owner" });
+      const { token } = SessionOutput.parse(
+        (await signIn(c.email, PASSWORD, "mobile")).body,
       );
       const auth = { Authorization: `Bearer ${token ?? ""}` };
-      t.relogio.avancar(12 * HORA - MINUTO);
-      expect((await t.http().get("/auth/eu").set(auth)).status).toBe(200);
-      t.relogio.avancar(12 * HORA + MINUTO);
-      expect((await t.http().get("/auth/eu").set(auth)).status).toBe(401);
+      t.clock.advance(12 * HOUR - MINUTE);
+      expect((await t.http().get("/auth/me").set(auth)).status).toBe(200);
+      t.clock.advance(12 * HOUR + MINUTE);
+      expect((await t.http().get("/auth/me").set(auth)).status).toBe(401);
     });
 
-    it("barbeiro: 30 dias de inatividade", async () => {
-      const c = await conta({ papel: "barbeiro" });
-      const { token } = SessaoSaida.parse(
-        (await entrar(c.email, SENHA, "mobile")).body,
+    it("barber: 30 days of inactivity", async () => {
+      const c = await account({ role: "barber" });
+      const { token } = SessionOutput.parse(
+        (await signIn(c.email, PASSWORD, "mobile")).body,
       );
       const auth = { Authorization: `Bearer ${token ?? ""}` };
-      t.relogio.avancar(29 * DIA);
-      expect((await t.http().get("/auth/eu").set(auth)).status).toBe(200);
-      t.relogio.avancar(31 * DIA);
-      expect((await t.http().get("/auth/eu").set(auth)).status).toBe(401);
+      t.clock.advance(29 * DAY);
+      expect((await t.http().get("/auth/me").set(auth)).status).toBe(200);
+      t.clock.advance(31 * DAY);
+      expect((await t.http().get("/auth/me").set(auth)).status).toBe(401);
     });
   });
 
-  describe("trilha de auditoria (FR-020)", () => {
-    it("registra login_sucesso, login_falha e logout sem e-mail, nome, senha, token nem IP", async () => {
-      const c = await conta();
-      await entrar(c.email, "errada");
-      const login = await entrar(c.email, SENHA, "mobile");
-      const { token } = SessaoSaida.parse(login.body);
+  describe("audit trail (FR-020)", () => {
+    it("records login_success, login_failure and logout without e-mail, name, password, token or IP", async () => {
+      const c = await account();
+      await signIn(c.email, "not-the-password");
+      const login = await signIn(c.email, PASSWORD, "mobile");
+      const { token } = SessionOutput.parse(login.body);
       await t
         .http()
         .post("/auth/logout")
         .set("Authorization", `Bearer ${token ?? ""}`);
 
-      const eventos = await comTenantAdmin(c.tenantId, (tx) =>
-        tx.select().from(eventoSeguranca),
+      const events = await withTenantAdmin(c.tenantId, (tx) =>
+        tx.select().from(securityEvent),
       );
-      expect(eventos.map((e) => e.tipo).sort()).toEqual([
-        "login_falha",
-        "login_sucesso",
+      expect(events.map((e) => e.type).sort()).toEqual([
+        "login_failure",
+        "login_success",
         "logout",
       ]);
       expect(
-        eventos.every(
-          (e) => e.atorUsuarioId === c.id && e.atorTipo === "usuario",
-        ),
+        events.every((e) => e.actorUserId === c.id && e.actorType === "user"),
       ).toBe(true);
-      const texto = JSON.stringify(eventos);
-      for (const proibido of [
+      const text = JSON.stringify(events);
+      for (const forbidden of [
         c.email,
         "Ana Souza",
-        SENHA,
-        "errada",
+        PASSWORD,
+        "not-the-password",
         token ?? "x",
         "127.0.0.1",
         "::1",
       ]) {
-        expect(texto).not.toContain(proibido);
+        expect(text).not.toContain(forbidden);
       }
     });
 
-    it("falha de e-mail inexistente vira evento sem barbearia, invisível para qualquer tenant", async () => {
-      const antes = await conexaoSuper().query<{ n: number }>(
-        "select count(*)::int as n from evento_seguranca where tenant_id is null and tipo = 'login_falha'",
+    it("a failure for an unknown e-mail becomes an event without a barbershop, invisible to any tenant", async () => {
+      const before = await superConnection().query<{ n: number }>(
+        "select count(*)::int as n from security_events where tenant_id is null and type = 'login_failure'",
       );
-      await entrar("fantasma-auth@exemplo.com", SENHA);
-      const depois = await conexaoSuper().query<{ n: number }>(
-        "select count(*)::int as n from evento_seguranca where tenant_id is null and tipo = 'login_falha'",
+      await signIn("ghost-auth@example.com", PASSWORD);
+      const after = await superConnection().query<{ n: number }>(
+        "select count(*)::int as n from security_events where tenant_id is null and type = 'login_failure'",
       );
-      expect((depois.rows[0]?.n ?? 0) - (antes.rows[0]?.n ?? 0)).toBe(1);
+      expect((after.rows[0]?.n ?? 0) - (before.rows[0]?.n ?? 0)).toBe(1);
     });
   });
 });
 
-describe("limite por origem (FR-015)", () => {
-  let t: AppDeTeste;
+describe("per-origin limit (FR-015)", () => {
+  let t: TestApp;
 
   beforeAll(async () => {
-    t = await criarApp({ limitePorMinuto: 3 });
+    t = await createApp({ limitPerMinute: 3 });
   });
 
   afterAll(async () => {
-    await t.fechar();
-    await fecharConexoes();
+    await t.close();
+    await closeConnections();
   });
 
-  it("acima de 3 tentativas por minuto do mesmo IP o login responde 429 com Retry-After", async () => {
-    const tentar = () =>
+  it("above 3 attempts per minute from the same IP, login answers 429 with Retry-After", async () => {
+    const attempt = () =>
       t
         .http()
         .post("/auth/login")
-        .send({ email: "x@exemplo.com", senha: "y", cliente: "web" });
+        .send({ email: "x@example.com", password: "y", client: "web" });
     for (let i = 0; i < 3; i += 1) {
-      expect((await tentar()).status).toBe(401);
+      expect((await attempt()).status).toBe(401);
     }
-    const r = await tentar();
+    const r = await attempt();
     expect(r.status).toBe(429);
-    expect(Erro.parse(r.body).codigo).toBe("MUITAS_REQUISICOES");
+    expect(ErrorBody.parse(r.body).code).toBe("TOO_MANY_REQUESTS");
     expect(Number(r.headers["retry-after"])).toBeGreaterThan(0);
   });
 
-  it("o limite não vale para rotas protegidas", async () => {
-    const { barbeariaId: tenantId } = await criarBarbearia("Sem limite");
-    const id = await criarUsuario({ tenantId, papel: "dono" });
-    const token = await t.abrirSessao({ id, tenantId, papel: "dono" });
+  it("the limit does not apply to protected routes", async () => {
+    const { barbershopId: tenantId } = await createBarbershop("No limit");
+    const id = await createUser({ tenantId, role: "owner" });
+    const token = await t.openSession({ id, tenantId, role: "owner" });
     for (let i = 0; i < 6; i += 1) {
       expect(
-        (await t.http().get("/auth/eu").set("Authorization", `Bearer ${token}`))
+        (await t.http().get("/auth/me").set("Authorization", `Bearer ${token}`))
           .status,
       ).toBe(200);
     }

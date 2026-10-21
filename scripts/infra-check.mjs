@@ -1,5 +1,5 @@
-// Confirma, a partir do host, que Postgres e Redis respondem com o protocolo certo.
-// Node puro (node:net), sem biblioteca de banco. Código de saída != 0 em falha.
+// Confirms, from the host, that Postgres and Redis answer with the right protocol.
+// Plain Node (node:net), no database library. Exit code != 0 on failure.
 import net from "node:net";
 
 const HOST = "127.0.0.1";
@@ -7,7 +7,7 @@ const ATTEMPTS = 5;
 const RETRY_DELAY_MS = 1000;
 const TIMEOUT_MS = 2000;
 
-// SSLRequest do Postgres: tamanho (8) + código 80877103. O servidor responde 1 byte, "S" ou "N".
+// Postgres SSLRequest: length (8) + code 80877103. The server answers 1 byte, "S" or "N".
 const POSTGRES_SSL_REQUEST = Buffer.from([
   0x00, 0x00, 0x00, 0x08, 0x04, 0xd2, 0x16, 0x2f,
 ]);
@@ -38,12 +38,12 @@ function probe({ port, request, accepts }) {
       if (accepts(reply)) {
         resolve();
       } else {
-        reject(new Error("resposta inesperada"));
+        reject(new Error("unexpected response"));
       }
     });
     socket.once("error", reject);
     socket.once("close", () =>
-      reject(new Error("conexão encerrada sem resposta")),
+      reject(new Error("connection closed without a response")),
     );
   });
 }
@@ -53,7 +53,7 @@ async function check(target) {
   for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
     try {
       await probe(target);
-      console.log(`${target.name}: respondeu em ${HOST}:${target.port}`);
+      console.log(`${target.name}: answered on ${HOST}:${target.port}`);
       return true;
     } catch (error) {
       lastError = error;
@@ -63,7 +63,7 @@ async function check(target) {
     }
   }
   console.error(
-    `${target.name}: sem resposta em ${HOST}:${target.port} (${lastError.message})`,
+    `${target.name}: no answer on ${HOST}:${target.port} (${lastError.message})`,
   );
   return false;
 }

@@ -1,8 +1,8 @@
 import { NestFactory } from "@nestjs/core";
-import { AnonimizacaoService } from "../identidade/provisionamento/anonimizacao.service.js";
-import { ProvisionamentoService } from "../identidade/provisionamento/provisionamento.service.js";
-import { ReenvioConviteDonoService } from "../identidade/provisionamento/reenvio-convite-dono.service.js";
-import { executarCli } from "./comandos.js";
+import { AnonymizationService } from "../identity/provisioning/anonymization.service.js";
+import { ProvisioningService } from "../identity/provisioning/provisioning.service.js";
+import { OwnerInvitationResendService } from "../identity/provisioning/owner-invitation-resend.service.js";
+import { runCli } from "./commands.js";
 import { CliModule } from "./cli.module.js";
 
 async function main(): Promise<void> {
@@ -10,19 +10,19 @@ async function main(): Promise<void> {
     logger: ["error", "warn"],
   });
   try {
-    process.exitCode = await executarCli(
+    process.exitCode = await runCli(
       process.argv.slice(2),
       {
-        provisionamento: app.get(ProvisionamentoService),
-        reenvio: app.get(ReenvioConviteDonoService),
-        anonimizacao: app.get(AnonimizacaoService),
+        provisioning: app.get(ProvisioningService),
+        resend: app.get(OwnerInvitationResendService),
+        anonymization: app.get(AnonymizationService),
       },
       {
-        out: (mensagem) => {
-          console.log(mensagem);
+        out: (message) => {
+          console.log(message);
         },
-        err: (mensagem) => {
-          console.error(mensagem);
+        err: (message) => {
+          console.error(message);
         },
       },
     );

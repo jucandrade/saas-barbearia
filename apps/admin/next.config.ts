@@ -2,13 +2,13 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   transpilePackages: ["@barbearia/ui", "@barbearia/contracts"],
-  // Os links de convite e de recuperação trazem um token na URL: não deixa o
-  // token vazar para outros sites pelo cabeçalho Referer.
+  // Invitation and recovery links carry a token in the URL: keep the token from
+  // leaking to other sites through the Referer header.
   headers() {
-    const semReferer = [{ key: "Referrer-Policy", value: "no-referrer" }];
+    const noReferrer = [{ key: "Referrer-Policy", value: "no-referrer" }];
     return Promise.resolve([
-      { source: "/convite/:token*", headers: semReferer },
-      { source: "/redefinir-senha/:token*", headers: semReferer },
+      { source: "/invitation/:token*", headers: noReferrer },
+      { source: "/reset-password/:token*", headers: noReferrer },
     ]);
   },
 };
