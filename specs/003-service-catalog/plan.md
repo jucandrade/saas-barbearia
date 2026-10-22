@@ -51,6 +51,26 @@ Cria o contexto "Cadastros" (catálogo) sobre a base da 002: categorias gerencia
 **Resultado (pré-pesquisa)**: aprovado, sem decisão aberta bloqueante.
 **Resultado (pós-design)**: aprovado, com quatro notas justificadas em Complexity Tracking.
 
+**Reavaliação com os arquivos reais (T059, após a implementação)**: aprovado, sem violações novas.
+
+| Princípio | Verificado nos arquivos |
+|---|---|
+| I | `ENABLE` e `FORCE ROW LEVEL SECURITY` nas quatro tabelas (`apps/api/drizzle/0004_catalog.sql`, 4 ocorrências de `FORCE`). Chaves compostas `(tenant_id, id)` recusam serviço com categoria de outra barbearia e vínculo com usuário de outra barbearia (`catalog-rls.spec.ts`). `catalog-leak.spec.ts` chama os endpoints como a barbearia B com ids da A e confirma 404, lista vazia ou campo inválido, sem nada alterado. Enfraquecer a política de `services` (`USING (true)`) faz falhar só o passo `Integration test` do `linux` na CI. |
+| II | Preço em centavos inteiros, com `CHECK` de 0 a 1.000.000; formatação em reais só nas telas, por aritmética inteira. |
+| IV | `packages/domain` segue sem `dependencies`; `normalizeName`, as validações e `resolveTerms` são funções puras com testes escritos antes. Nenhum `Date.now()` no catálogo: o horário vem do `Clock`. |
+| V | Schemas Zod em `packages/contracts`; um registro único `ROUTES = IDENTITY_ROUTES + CATALOG_ROUTES` gera o OpenAPI (27 operações, 15 do catálogo); `routes.spec.ts` da API garante que toda rota dos controladores está no registro com o mesmo acesso. |
+| VI | O catálogo só importa as tabelas dele (`service`, `serviceCategory`, `serviceExecutor`, `catalogEvent`) e nunca a `users`; lê usuários por `UserDirectory`. A agenda e a comanda usarão `CatalogFacade.resolveTerms`. |
+| IX | `catalog-audit-full.spec.ts` e o teste de log provam que eventos e logs não trazem nome, e-mail, token nem IP; a lista de executores devolve só `id` e `name`, e o barbeiro vê os valores específicos apenas de si mesmo. |
+| X | Nenhuma dependência nova; sem preço por unidade, pacotes ou promoções. |
+
+**O que a implementação ensinou** (já corrigido e coberto por teste):
+
+1. O `drizzle-kit generate` emitiu o índice único de `users` **depois** das chaves estrangeiras que dependem dele; a migration `0004` foi reordenada à mão.
+2. O ZodPipe da Identidade só devolvia mensagens genéricas; passou a repassar a mensagem de validações customizadas (`custom`), para o dono ler "A duração deve ser múltipla de 5 minutos".
+3. A lista de serviços faz um número **constante** de consultas (4), independente do total de serviços, em vez de uma única, e `catalog-performance.spec.ts` mede isso comparando 10 e 100 serviços.
+4. Desativar um usuário revoga as sessões dele (regra da 002), então o barbeiro precisa entrar de novo depois de reativado; isso apareceu na validação do quickstart.
+5. Uma regra sem teste de ponta a ponta continua só nas telas: o painel do dono e a tela do barbeiro foram verificados por tipos, lint e build (`next build`, `expo export`), não em um navegador ou aparelho.
+
 ## Project Structure
 
 ### Documentation (this feature)
