@@ -52,15 +52,15 @@ A CI roda exatamente estes comandos: `format:check`, `lint`, `typecheck` e `test
 
 ## Estrutura
 
-| Espaço               | Para que serve                                                                      |
-| -------------------- | ----------------------------------------------------------------------------------- |
-| `apps/api`           | API em NestJS: identidade e acesso, banco com RLS, comandos da equipe do produto    |
-| `apps/admin`         | Painel administrativo em Next.js: entrar, convite, recuperar senha e Equipe         |
-| `apps/booking`       | Link público de agendamento em Next.js, renderizado no servidor (página em branco)  |
-| `apps/barber`        | App do barbeiro em React Native com Expo: entrar e sair                             |
-| `packages/domain`    | Regras de negócio como funções puras, sem framework, banco, rede ou relógio         |
-| `packages/contracts` | Contratos (schemas Zod) compartilhados entre API e clientes, e o gerador do OpenAPI |
-| `packages/ui`        | Componentes de interface compartilhados (vazio)                                     |
+| Espaço               | Para que serve                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `apps/api`           | API em NestJS: identidade e acesso, catálogo de serviços, banco com RLS, comandos     |
+| `apps/admin`         | Painel administrativo em Next.js: entrar, convite, recuperar senha, Equipe e Catálogo |
+| `apps/booking`       | Link público de agendamento em Next.js, renderizado no servidor (página em branco)    |
+| `apps/barber`        | App do barbeiro em React Native com Expo: entrar, sair e ver os serviços              |
+| `packages/domain`    | Regras de negócio como funções puras, sem framework, banco, rede ou relógio           |
+| `packages/contracts` | Contratos (schemas Zod) compartilhados entre API e clientes, e o gerador do OpenAPI   |
+| `packages/ui`        | Componentes de interface compartilhados (vazio)                                       |
 
 ## Configuração local
 
@@ -94,6 +94,17 @@ pnpm --filter @barbearia/api cli anonymize-user --email "bia@exemplo.com"
 `resend-owner-invitation` reenvia (ou corrige o e-mail, com `--new-email`) o convite do primeiro dono enquanto ele não foi aceito. `anonymize-user` atende a um pedido de exclusão de dados (LGPD) e exige que a pessoa já esteja desativada. Os comandos não imprimem token, link nem e-mail.
 
 O documento OpenAPI da API sai de `pnpm --filter @barbearia/contracts openapi` (arquivo `packages/contracts/dist/openapi.json`).
+
+## Catálogo de serviços
+
+O dono mantém o catálogo da barbearia em **Catálogo** (`/catalog` no admin): categorias (criar, renomear, reordenar, remover quando vazias), serviços (nome, descrição, categoria, preço e duração), quem executa cada serviço e, se quiser, preço e duração próprios de cada executor. O barbeiro vê o catálogo ativo no app, com os serviços dele destacados e os valores que valem para ele; só o dono altera.
+
+- **Serviço nunca é apagado**: só desativa e reativa. O papel do banco da API nem tem permissão de `DELETE` na tabela, e o nome de um serviço desativado continua reservado.
+- **Valores**: preço em centavos inteiros (de 0 a R$ 10.000,00) e duração em minutos, múltiplos de 5, de 5 a 480.
+- **Auditoria**: toda alteração grava um evento imutável em `catalog_events` (autor, horário, antes e depois de preço e duração), sem nome nem e-mail de pessoas.
+- **Para a agenda e a comanda**: `GET /services/{id}/terms?userId=` e `CatalogFacade.resolveTerms` devolvem o preço e a duração que valem para um executor.
+
+Os 15 endpoints estão no documento OpenAPI (comando acima). Não há variável de ambiente nova nesta feature.
 
 Em produção, os papéis do banco devem ser criados antes (ver [migrate.ts](apps/api/src/db/migrate.ts)) e `SESSION_COOKIE_SECURE=true`.
 

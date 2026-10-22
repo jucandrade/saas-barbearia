@@ -17,9 +17,11 @@ export class ApiResponseError extends Error {
   }
 }
 
+export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
 async function request(
   path: string,
-  method: "GET" | "POST",
+  method: Method,
   body: unknown,
 ): Promise<Response> {
   const init: RequestInit = { method: method, credentials: "include" };
@@ -59,7 +61,7 @@ async function errorFromResponse(
 }
 
 interface Options<S extends z.ZodType> {
-  method?: "GET" | "POST";
+  method?: Method;
   body?: unknown;
   /** `@barbearia/contracts` schema that validates the success response. */
   schema: S;
@@ -81,8 +83,9 @@ export async function call<S extends z.ZodType>(
 export async function callWithoutResponse(
   path: string,
   body?: unknown,
+  method: Method = "POST",
 ): Promise<void> {
-  const response = await request(path, "POST", body);
+  const response = await request(path, method, body);
   if (!response.ok) {
     throw await errorFromResponse(response);
   }

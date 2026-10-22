@@ -6,24 +6,11 @@ import {
   type ResendOutput,
 } from "@barbearia/contracts";
 import { Roles, CurrentUser } from "../auth/decorators.js";
-import { ApiError } from "../http/api-error.js";
+import { requireUser } from "../http/require-user.js";
 import { ResourceIdPipe } from "../http/resource-id.pipe.js";
 import type { AuthenticatedUser } from "../http/http-types.js";
 import { ZodPipe } from "../http/zod.pipe.js";
 import { TeamService } from "./team.service.js";
-
-function requireUser(
-  current: AuthenticatedUser | undefined,
-): AuthenticatedUser {
-  if (current === undefined) {
-    throw new ApiError(
-      401,
-      "INVALID_SESSION",
-      "Sessão inválida ou expirada. Entre novamente.",
-    );
-  }
-  return current;
-}
 
 /** Team management: owners only. Ids from another barbershop answer 404, like a nonexistent id. */
 @Roles("owner")

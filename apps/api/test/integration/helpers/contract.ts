@@ -38,3 +38,15 @@ export function expectCovers(
   ).map((r) => `${r.method} ${r.path}`);
   expect([...covered].sort()).toEqual(expect.arrayContaining(expected.sort()));
 }
+
+/** Each listed `method path` is in the registry and was exercised by the file. */
+export function expectRoutesCovered(
+  routes: readonly string[],
+  covered: ReadonlySet<string>,
+): void {
+  const registry = new Set(ROUTES.map((r) => `${r.method} ${r.path}`));
+  for (const route of routes) {
+    expect(registry.has(route), `not in the registry: ${route}`).toBe(true);
+    expect(covered.has(route), `not exercised: ${route}`).toBe(true);
+  }
+}

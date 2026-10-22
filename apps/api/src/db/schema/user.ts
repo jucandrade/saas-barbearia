@@ -59,6 +59,8 @@ export const user = pgTable(
     ),
     uniqueIndex("users_email_unique").on(t.email),
     index("users_tenant_idx").on(t.tenantId),
+    // Target of the composite foreign keys of the catalog (same-tenant guarantee).
+    uniqueIndex("users_tenant_id_id_idx").on(t.tenantId, t.id),
     tenantPolicy("users_isolation", sql`${t.tenantId}`),
   ],
 ).enableRLS();

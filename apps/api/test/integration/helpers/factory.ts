@@ -1,11 +1,16 @@
 import {
   barbershop,
+  catalogEvent,
   securityEvent,
+  service,
+  serviceCategory,
+  serviceExecutor,
   session,
   accessToken,
   unit,
   user,
 } from "../../../src/db/schema/index.js";
+import { normalizeName } from "@barbearia/domain";
 import {
   generateToken,
   hashToken,
@@ -41,7 +46,7 @@ export interface UserToCreate {
   name?: string;
   email?: string;
   role?: "owner" | "barber";
-  status?: "invited" | "active" | "deactivated";
+  status?: "invited" | "active" | "deactivated" | "anonymized";
   passwordHash?: string | null;
 }
 
@@ -62,6 +67,7 @@ export async function createUser(data: UserToCreate): Promise<string> {
             ? "test-hash"
             : null
           : data.passwordHash,
+      anonymizedAt: status === "anonymized" ? new Date() : null,
     });
   });
   return id;
@@ -126,6 +132,93 @@ export async function createEventInDatabase(
       tenantId,
       type: "login_success",
       actorType: "system",
+    });
+  });
+}
+
+export interface CategoryToCreate {
+  tenantId: string;
+  name?: string;
+  position?: number;
+}
+
+/** Creates a service category straight in the database and returns its id. */
+export async function createCategory(data: CategoryToCreate): Promise<string> {
+  const id = newUuid();
+  const name = data.name ?? `Category ${id.slice(0, 8)}`;
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(serviceCategory).values({
+      id,
+      tenantId: data.tenantId,
+      name,
+      nameKey: normalizeName(name),
+      position: data.position ?? 0,
+    });
+  });
+  return id;
+}
+
+export interface ServiceToCreate {
+  tenantId: string;
+  categoryId: string;
+  name?: string;
+  description?: string | null;
+  durationMinutes?: number;
+  priceCents?: number;
+  status?: "active" | "deactivated";
+}
+
+/** Creates a service straight in the database and returns its id. */
+export async function createService(data: ServiceToCreate): Promise<string> {
+  const id = newUuid();
+  const name = data.name ?? `Service ${id.slice(0, 8)}`;
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(service).values({
+      id,
+      tenantId: data.tenantId,
+      categoryId: data.categoryId,
+      name,
+      nameKey: normalizeName(name),
+      description: data.description ?? null,
+      durationMinutes: data.durationMinutes ?? 30,
+      priceCents: data.priceCents ?? 5000,
+      status: data.status ?? "active",
+    });
+  });
+  return id;
+}
+
+export interface ExecutorToLink {
+  tenantId: string;
+  serviceId: string;
+  userId: string;
+  priceCents?: number | null;
+  durationMinutes?: number | null;
+}
+
+/** Links a user to a service straight in the database, with optional specific values. */
+export async function linkExecutor(data: ExecutorToLink): Promise<void> {
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(serviceExecutor).values({
+      tenantId: data.tenantId,
+      serviceId: data.serviceId,
+      userId: data.userId,
+      priceCents: data.priceCents ?? null,
+      durationMinutes: data.durationMinutes ?? null,
+    });
+  });
+}
+
+/** Creates a catalog event straight in the database, for the isolation tests. */
+export async function createCatalogEventInDatabase(
+  tenantId: string,
+  actorUserId: string,
+): Promise<void> {
+  await withTenantAdmin(tenantId, async (tx) => {
+    await tx.insert(catalogEvent).values({
+      tenantId,
+      type: "category_created",
+      actorUserId,
     });
   });
 }

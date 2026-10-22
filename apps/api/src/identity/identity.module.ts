@@ -20,6 +20,7 @@ import { TeamService } from "./team/team.service.js";
 import { ErrorFilter } from "./http/error-filter.js";
 import { Clock, SystemClock } from "./clock.js";
 import { PasswordService } from "./security/password.service.js";
+import { UserDirectory } from "./directory/user-directory.js";
 
 /** Bounded context "Identity and Tenancy" (principle VI). */
 @Module({
@@ -47,6 +48,7 @@ import { PasswordService } from "./security/password.service.js";
     InvitationsService,
     TeamService,
     RecoveryService,
+    UserDirectory,
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrorFilter },
@@ -58,6 +60,7 @@ import { PasswordService } from "./security/password.service.js";
     SessionService,
     AuditService,
     InvitationIssuer,
+    UserDirectory,
   ],
 })
 export class IdentityModule {}

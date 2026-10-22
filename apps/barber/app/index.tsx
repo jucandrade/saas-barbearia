@@ -79,6 +79,15 @@ export default function Index() {
       <Text>Olá, {state.me.user.name}.</Text>
       <Pressable
         style={styles.button}
+        onPress={() => {
+          router.push("/catalog");
+        }}
+        accessibilityRole="button"
+      >
+        <Text style={styles.buttonText}>Ver serviços</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
         onPress={() => void signOut(state.token)}
         accessibilityRole="button"
       >
