@@ -154,7 +154,7 @@ description: "Lista de tarefas da feature 003-service-catalog"
 - [X] T057 Percorrer o [quickstart.md](quickstart.md) (cenários 1 a 7) em Linux, conferir SC-001 a SC-007 e registrar divergências; depende de T056
 - [X] T058 Validar na pipeline real: push da branch e conferir `linux` (com `Migrate` e `Integration test`) e `windows` passando; em branch descartável enfraquecer uma política de RLS das tabelas do catálogo (`USING (true)`) e confirmar que falha só `Integration test`, só em `linux`; apagar a branch descartável; depende de T057
 - [X] T059 Reavaliar o Constitution Check de [plan.md](plan.md) com os arquivos reais (RLS e `FORCE` nas quatro tabelas, ausência de `DELETE` em `services`, domínio sem dependências de runtime, nenhum acesso do catálogo à tabela `users`, nenhum dado pessoal em eventos) e atualizar o plan se algo mudou; depende de T057
-- [ ] T060 Atualizar a nota de memória do projeto (`project-003-service-catalog`) com o estado final, o mapa de nomes em inglês e as decisões não óbvias (chave composta, `catalog_events`, visão do barbeiro); depende de T058, T059
+- [X] T060 Atualizar a nota de memória do projeto (`project-003-service-catalog`) com o estado final, o mapa de nomes em inglês e as decisões não óbvias (chave composta, `catalog_events`, visão do barbeiro); depende de T058, T059
 
 ---
 
