@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { normalizeName } from "@barbearia/domain";
 import type {
   CreateServiceInput,
@@ -211,6 +211,48 @@ export class ServicesService {
       }
       throw error;
     }
+  }
+
+  async deactivate(current: AuthenticatedUser, id: string): Promise<void> {
+    await this.setStatus(current, id, "deactivated", "service_deactivated");
+  }
+
+  async reactivate(current: AuthenticatedUser, id: string): Promise<void> {
+    await this.setStatus(current, id, "active", "service_reactivated");
+  }
+
+  /**
+   * Idempotent: the conditional UPDATE changes the row (and logs the event) only when the
+   * status really differs, so repeating the action neither fails nor adds events (FR-005).
+   */
+  private async setStatus(
+    current: AuthenticatedUser,
+    id: string,
+    status: ServiceRow["status"],
+    type: "service_deactivated" | "service_reactivated",
+  ): Promise<void> {
+    await this.tenantDb.transaction(current.tenantId, async (tx) => {
+      const [changed] = await tx
+        .update(service)
+        .set({ status, updatedAt: this.clock.now() })
+        .where(and(eq(service.id, id), ne(service.status, status)))
+        .returning({ id: service.id });
+      if (changed !== undefined) {
+        await this.audit.record(tx, current.tenantId, {
+          type,
+          actorUserId: current.userId,
+          serviceId: id,
+        });
+        return;
+      }
+      const [exists] = await tx
+        .select({ id: service.id })
+        .from(service)
+        .where(eq(service.id, id));
+      if (exists === undefined) {
+        throw notFound();
+      }
+    });
   }
 
   /** The service, or 404 — also for a deactivated one when the caller is a barber (FR-006). */

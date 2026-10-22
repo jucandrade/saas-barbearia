@@ -111,4 +111,20 @@ export const CATALOG_ROUTES: readonly RouteDefinition[] = [
     response: Service,
     errors: [forbidden, notFound, serviceNameTaken, invalidData],
   },
+  {
+    method: "post",
+    path: "/services/{id}/deactivate",
+    summary: "Take a service out of circulation (never deleted)",
+    access: "owner",
+    status: 204,
+    errors: [forbidden, notFound],
+  },
+  {
+    method: "post",
+    path: "/services/{id}/reactivate",
+    summary: "Put a deactivated service back in circulation",
+    access: "owner",
+    status: 204,
+    errors: [forbidden, notFound],
+  },
 ];

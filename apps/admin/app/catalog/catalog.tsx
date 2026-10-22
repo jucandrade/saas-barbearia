@@ -115,6 +115,25 @@ export function Catalog() {
     });
   }
 
+  function setServiceActive(service: Service, active: boolean) {
+    if (
+      !active &&
+      !window.confirm(
+        `Desativar ${service.name}? Ele deixa de ser oferecido para novos atendimentos.`,
+      )
+    ) {
+      return;
+    }
+    void run(async () => {
+      await callWithoutResponse(
+        `/services/${service.id}/${active ? "reactivate" : "deactivate"}`,
+      );
+      return active
+        ? `${service.name} voltou a ser oferecido.`
+        : `${service.name} foi desativado.`;
+    });
+  }
+
   function removeCategory(category: ServiceCategory) {
     if (!window.confirm(`Remover a categoria ${category.name}?`)) {
       return;
@@ -188,9 +207,11 @@ export function Catalog() {
           )}
 
           {load.categories.map((category, index) => {
-            const inside = load.services.filter(
+            const inCategory = load.services.filter(
               (s) => s.categoryId === category.id,
             );
+            const inside = inCategory.filter((s) => s.status === "active");
+            const off = inCategory.filter((s) => s.status === "deactivated");
             return (
               <section key={category.id} aria-label={category.name}>
                 <h2>{category.name}</h2>
@@ -237,7 +258,7 @@ export function Catalog() {
                   </button>
                 </div>
                 {inside.length === 0 && (
-                  <p className="hint">Nenhum serviço nesta categoria.</p>
+                  <p className="hint">Nenhum serviço ativo nesta categoria.</p>
                 )}
                 <ul className="list">
                   {inside.map((service) => (
@@ -276,12 +297,50 @@ export function Catalog() {
                             >
                               Editar
                             </button>
+                            <button
+                              type="button"
+                              className="secondary"
+                              disabled={busy}
+                              onClick={() => {
+                                setServiceActive(service, false);
+                              }}
+                            >
+                              Desativar
+                            </button>
                           </div>
                         </>
                       )}
                     </li>
                   ))}
                 </ul>
+                {off.length > 0 && (
+                  <details>
+                    <summary>Desativados ({String(off.length)})</summary>
+                    <ul className="list">
+                      {off.map((service) => (
+                        <li key={service.id} className="card">
+                          <strong>{service.name}</strong>
+                          <span className="hint">
+                            {String(service.durationMinutes)} min ·{" "}
+                            {formatPrice(service.priceCents)}
+                          </span>
+                          <div className="actions">
+                            <button
+                              type="button"
+                              className="secondary"
+                              disabled={busy}
+                              onClick={() => {
+                                setServiceActive(service, true);
+                              }}
+                            >
+                              Reativar
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </section>
             );
           })}

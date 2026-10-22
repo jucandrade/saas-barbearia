@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -59,5 +60,25 @@ export class ServicesController {
     @Body(new ZodPipe(UpdateServiceInput)) input: UpdateServiceInput,
   ): Promise<Service> {
     return this.services.update(requireUser(current), id, input);
+  }
+
+  @Roles("owner")
+  @Post(":id/deactivate")
+  @HttpCode(204)
+  deactivate(
+    @CurrentUser() current: AuthenticatedUser | undefined,
+    @Param("id", new ResourceIdPipe()) id: string,
+  ): Promise<void> {
+    return this.services.deactivate(requireUser(current), id);
+  }
+
+  @Roles("owner")
+  @Post(":id/reactivate")
+  @HttpCode(204)
+  reactivate(
+    @CurrentUser() current: AuthenticatedUser | undefined,
+    @Param("id", new ResourceIdPipe()) id: string,
+  ): Promise<void> {
+    return this.services.reactivate(requireUser(current), id);
   }
 }
