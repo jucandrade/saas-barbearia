@@ -9,3 +9,4 @@ export * from "./catalog/common.js";
 export * from "./catalog/categories.js";
 export * from "./catalog/services.js";
 export * from "./catalog/executors.js";
+export * from "./catalog/terms.js";

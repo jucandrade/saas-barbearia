@@ -11,21 +11,27 @@ import {
 import {
   CreateServiceInput,
   ServiceListQuery,
+  TermsQuery,
   UpdateServiceInput,
   type Service,
   type ServicesOutput,
+  type TermsOutput,
 } from "@barbearia/contracts";
 import { CurrentUser, Roles } from "../../identity/auth/decorators.js";
 import type { AuthenticatedUser } from "../../identity/http/http-types.js";
 import { requireUser } from "../../identity/http/require-user.js";
 import { ResourceIdPipe } from "../../identity/http/resource-id.pipe.js";
 import { ZodPipe } from "../../identity/http/zod.pipe.js";
+import { ExecutorsService } from "../executors/executors.service.js";
 import { ServicesService } from "./services.service.js";
 
 /** Services: any signed-in user reads, only the owner writes. */
 @Controller("services")
 export class ServicesController {
-  constructor(private readonly services: ServicesService) {}
+  constructor(
+    private readonly services: ServicesService,
+    private readonly executors: ExecutorsService,
+  ) {}
 
   @Get()
   async list(
@@ -50,6 +56,15 @@ export class ServicesController {
     @Param("id", new ResourceIdPipe()) id: string,
   ): Promise<Service> {
     return this.services.get(requireUser(current), id);
+  }
+
+  @Get(":id/terms")
+  terms(
+    @CurrentUser() current: AuthenticatedUser | undefined,
+    @Param("id", new ResourceIdPipe()) id: string,
+    @Query(new ZodPipe(TermsQuery)) query: TermsQuery,
+  ): Promise<TermsOutput> {
+    return this.executors.terms(requireUser(current), id, query.userId);
   }
 
   @Roles("owner")

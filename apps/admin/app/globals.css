@@ -195,3 +195,7 @@ h2 {
   min-height: 1.25rem;
   margin: 0;
 }
+
+.values {
+  margin: 0 0 0.75rem 1.75rem;
+}

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { IdentityModule } from "../identity/identity.module.js";
 import { CatalogAuditService } from "./catalog-audit.service.js";
+import { CatalogFacade } from "./catalog.facade.js";
 import { CategoriesController } from "./categories/categories.controller.js";
 import { CategoriesService } from "./categories/categories.service.js";
 import { ExecutorsController } from "./executors/executors.controller.js";
@@ -21,7 +22,8 @@ import { ServicesService } from "./services/services.service.js";
     CategoriesService,
     ServicesService,
     ExecutorsService,
+    CatalogFacade,
   ],
-  exports: [CatalogAuditService],
+  exports: [CatalogAuditService, CatalogFacade],
 })
 export class CatalogModule {}

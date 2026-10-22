@@ -4,6 +4,7 @@ import type {
   Executor,
   ExecutorInput,
   ExecutorsOutput,
+  TermsOutput,
 } from "@barbearia/contracts";
 import { service, serviceExecutor } from "../../db/schema/index.js";
 import { TenantDb, type Transaction } from "../../db/tenant-db.js";
@@ -12,6 +13,7 @@ import { UserDirectory } from "../../identity/directory/user-directory.js";
 import { ApiError } from "../../identity/http/api-error.js";
 import type { AuthenticatedUser } from "../../identity/http/http-types.js";
 import { CatalogAuditService } from "../catalog-audit.service.js";
+import { CatalogFacade } from "../catalog.facade.js";
 
 const notFound = (): ApiError =>
   new ApiError(404, "NOT_FOUND", "Recurso não encontrado.");
@@ -23,6 +25,7 @@ export class ExecutorsService {
     private readonly tenantDb: TenantDb,
     private readonly directory: UserDirectory,
     private readonly audit: CatalogAuditService,
+    private readonly facade: CatalogFacade,
     private readonly clock: Clock,
   ) {}
 
@@ -66,6 +69,25 @@ export class ExecutorsService {
       }
       executors.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
       return { executors };
+    });
+  }
+
+  /**
+   * Price and duration of a service for one executor (FR-010). A barber cannot ask about a
+   * deactivated service; the owner can, for the history.
+   */
+  async terms(
+    current: AuthenticatedUser,
+    serviceId: string,
+    userId: string,
+  ): Promise<TermsOutput> {
+    return this.tenantDb.transaction(current.tenantId, async (tx) => {
+      await this.requireVisibleService(tx, current, serviceId);
+      const terms = await this.facade.resolveTerms(tx, serviceId, userId);
+      if (terms === undefined) {
+        throw notFound();
+      }
+      return terms;
     });
   }
 

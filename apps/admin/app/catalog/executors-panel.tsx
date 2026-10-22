@@ -9,6 +9,7 @@ import {
 } from "@barbearia/contracts";
 import { call, callWithoutResponse } from "../../lib/api";
 import { messageOf } from "./errors";
+import { formatPrice, parsePrice, priceToInput } from "./money";
 
 interface Props {
   service: Service;
@@ -68,7 +69,6 @@ export function ExecutorsPanel({ service, people, onChanged }: Props) {
   if (executors === undefined) {
     return <p role="status">Carregando…</p>;
   }
-  const linkedIds = new Set(executors.map((e) => e.userId));
   return (
     <fieldset className="executors">
       <legend>Quem executa</legend>
@@ -76,20 +76,33 @@ export function ExecutorsPanel({ service, people, onChanged }: Props) {
         <p className="hint">Nenhuma pessoa ativa na equipe.</p>
       )}
       {people.map((person) => {
-        const linked = linkedIds.has(person.id);
+        const link = executors.find((e) => e.userId === person.id);
+        const linked = link !== undefined;
         return (
-          <label key={person.id} className="check">
-            <input
-              type="checkbox"
-              checked={linked}
-              disabled={busy}
-              onChange={() => {
-                void toggle(person, linked);
-              }}
-            />
-            {person.name}
-            {person.role === "owner" ? " (dono)" : ""}
-          </label>
+          <div key={person.id}>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={linked}
+                disabled={busy}
+                onChange={() => {
+                  void toggle(person, linked);
+                }}
+              />
+              {person.name}
+              {person.role === "owner" ? " (dono)" : ""}
+            </label>
+            {link !== undefined && (
+              <SpecificValues
+                service={service}
+                link={link}
+                onSaved={() => {
+                  setVersion((v) => v + 1);
+                  onChanged();
+                }}
+              />
+            )}
+          </div>
         );
       })}
       {error !== undefined && (
@@ -98,5 +111,102 @@ export function ExecutorsPanel({ service, people, onChanged }: Props) {
         </p>
       )}
     </fieldset>
+  );
+}
+
+interface ValuesProps {
+  service: Service;
+  link: Executor;
+  onSaved: () => void;
+}
+
+/** Optional specific price and duration of one executor; blank means "use the service's". */
+function SpecificValues({ service, link, onSaved }: ValuesProps) {
+  const [price, setPrice] = useState(
+    link.priceCents == null ? "" : priceToInput(link.priceCents),
+  );
+  const [duration, setDuration] = useState(
+    link.durationMinutes == null ? "" : String(link.durationMinutes),
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+
+  const shownPrice = link.priceCents ?? service.priceCents;
+  const shownDuration = link.durationMinutes ?? service.durationMinutes;
+
+  async function save() {
+    setError(undefined);
+    const priceCents = price.trim() === "" ? null : parsePrice(price);
+    if (priceCents === undefined) {
+      setError("Informe o preço em reais, por exemplo 60,00.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await call(`/services/${service.id}/executors/${link.userId}`, {
+        method: "PUT",
+        body: {
+          priceCents,
+          durationMinutes: duration.trim() === "" ? null : Number(duration),
+        },
+        schema: Executor,
+      });
+      onSaved();
+    } catch (failure) {
+      setError(messageOf(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="values">
+      <p className="hint">
+        Vale para {link.name}: {formatPrice(shownPrice)} ·{" "}
+        {String(shownDuration)} min
+      </p>
+      <label htmlFor={`${service.id}-${link.userId}-price`}>
+        Preço próprio (R$)
+      </label>
+      <input
+        id={`${service.id}-${link.userId}-price`}
+        inputMode="decimal"
+        value={price}
+        placeholder={priceToInput(service.priceCents)}
+        onChange={(e) => {
+          setPrice(e.target.value);
+        }}
+        autoComplete="off"
+      />
+      <label htmlFor={`${service.id}-${link.userId}-duration`}>
+        Duração própria (minutos)
+      </label>
+      <input
+        id={`${service.id}-${link.userId}-duration`}
+        type="number"
+        inputMode="numeric"
+        min={5}
+        max={480}
+        step={5}
+        value={duration}
+        placeholder={String(service.durationMinutes)}
+        onChange={(e) => {
+          setDuration(e.target.value);
+        }}
+      />
+      {error !== undefined && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      <button
+        type="button"
+        className="secondary"
+        disabled={busy}
+        onClick={() => void save()}
+      >
+        Salvar valores
+      </button>
+    </div>
   );
 }

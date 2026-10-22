@@ -8,6 +8,7 @@ import {
 } from "./categories.js";
 import { ServiceCategory } from "./common.js";
 import { Executor, ExecutorInput, ExecutorsOutput } from "./executors.js";
+import { TermsOutput } from "./terms.js";
 import {
   CreateServiceInput,
   Service,
@@ -160,5 +161,14 @@ export const CATALOG_ROUTES: readonly RouteDefinition[] = [
     access: "owner",
     status: 204,
     errors: [forbidden, notFound],
+  },
+  {
+    method: "get",
+    path: "/services/{id}/terms",
+    summary: "Price and duration that apply to an executor of a service",
+    access: "session",
+    status: 200,
+    response: TermsOutput,
+    errors: [unauthorized, notFound, invalidData],
   },
 ];
