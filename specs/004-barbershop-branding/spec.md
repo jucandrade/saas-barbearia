@@ -115,8 +115,14 @@ O dono pode remover o logo e restaurar as cores padrão, voltando à aparência 
 - Cor principal igual à cor de destaque é permitida; o resultado continua legível.
 - Escolher um tom de uma paleta que deixou de existir (paleta futura revisada) cai no tom padrão, nunca em tela ilegível.
 - Dono sem conexão no app: as funções rápidas informam que precisam de conexão e não fazem nada pela metade.
-- Sessão do dono no app expira (12 horas): o app pede nova entrada, sem perder a tela em que estava mais do que o necessário.
+- Sessão do dono no app expira após 12 horas sem uso: o app pede nova entrada, e as funções rápidas não fazem nada pela metade.
 - Um membro da equipe desativado deixa de ver a identidade, pois perde o acesso.
+
+## Clarifications
+
+### Session 2026-10-22
+
+- Q: Por quanto tempo o dono pode ficar sem usar o app antes de precisar entrar de novo? → A: 12 horas sem uso, igual ao painel do dono (regra da feature 002, sem mudança).
 
 ## Requirements *(mandatory)*
 
@@ -143,6 +149,7 @@ O dono pode remover o logo e restaurar as cores padrão, voltando à aparência 
 - **FR-019**: No app, o dono MUST poder: ver o catálogo e a equipe, desativar e reativar um serviço, desativar um membro da equipe e reenviar um convite. O app MUST NOT oferecer ao dono criar ou editar serviços, categorias, preços, executores, identidade visual nem convidar novas pessoas.
 - **FR-020**: O barbeiro no app MUST continuar vendo somente a consulta de serviços, sem nenhuma função de gestão.
 - **FR-021**: Mensagens de erro e textos exibidos ao usuário MUST estar em português do Brasil.
+- **FR-022**: A sessão do dono no app MUST seguir a mesma regra do painel (12 horas sem uso); a do barbeiro MUST continuar como está.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -177,6 +184,6 @@ O dono pode remover o logo e restaurar as cores padrão, voltando à aparência 
 - A paleta é definida pelo produto e igual para todas as barbearias; quais são os 8 a 12 tons é decisão de design do plan. Cor livre fica fora do escopo.
 - As telas públicas e de entrada usam a aparência padrão, porque a barbearia só é conhecida depois do login.
 - As funções do dono no app são uma escolha de tela, não uma restrição de segurança: o dono continua podendo executar as mesmas ações pelo painel, e o app só não as oferece.
-- A sessão do dono no app segue a regra da feature 002 (12 horas de inatividade); mudar isso é uma decisão separada.
+- A sessão do dono no app vale 12 horas sem uso, a mesma regra do painel (feature 002); o barbeiro segue com 30 dias.
 - O painel é responsivo, sem aplicativo separado para o dono; o app do barbeiro é o mesmo app, com funções de gestão extras quando quem entra é o dono.
 - Fora do escopo: cores livres, temas por unidade, fontes personalizadas, banner ou imagem de fundo, domínio próprio e e-mails com a identidade da barbearia.
