@@ -24,7 +24,7 @@ O dono cria as categorias da barbearia e cadastra os serviços que ela oferece, 
 
 1. **Given** um dono autenticado, **When** ele informa nome, duração, preço e categoria válidos, **Then** o serviço é criado na sua barbearia e aparece na lista.
 2. **Given** um serviço existente, **When** o dono altera nome, descrição, duração, preço ou categoria, **Then** a alteração é salva e a lista reflete os novos dados.
-3. **Given** dados inválidos (nome vazio, duração zero ou negativa, preço negativo), **When** o cadastro ou a edição é enviado, **Then** nada é salvo e cada problema é indicado.
+3. **Given** dados inválidos (nome vazio ou longo demais, duração fora do passo ou do intervalo permitido, preço negativo ou acima do teto), **When** o cadastro ou a edição é enviado, **Then** nada é salvo e cada problema é indicado.
 4. **Given** um serviço com o mesmo nome já existente na barbearia, **When** o dono tenta cadastrar outro com esse nome, **Then** a operação é recusada com mensagem clara.
 5. **Given** um barbeiro autenticado, **When** ele tenta criar ou editar um serviço, **Then** a operação é negada.
 
@@ -49,7 +49,7 @@ O dono pode desativar um serviço que a barbearia deixou de oferecer e reativá-
 
 ### User Story 3 - Definir quais barbeiros executam cada serviço (Priority: P2)
 
-O dono define, para cada serviço, quais barbeiros o executam. Um barbeiro só pode ser agendado para os serviços vinculados a ele.
+O dono define, para cada serviço, quais executores o realizam. Executor é qualquer usuário ativo da barbearia, barbeiro ou o próprio dono quando ele também atende. Um executor só pode ser agendado para os serviços vinculados a ele.
 
 **Why this priority**: A agenda precisa saber quem pode fazer o quê. É necessário assim que há mais de um barbeiro com habilidades diferentes, mas o catálogo já é útil sem isso.
 
@@ -57,9 +57,9 @@ O dono define, para cada serviço, quais barbeiros o executam. Um barbeiro só p
 
 **Acceptance Scenarios**:
 
-1. **Given** um serviço e barbeiros ativos da barbearia, **When** o dono marca quais executam o serviço, **Then** o vínculo é salvo e a consulta de executores retorna exatamente esses barbeiros.
+1. **Given** um serviço e usuários ativos da barbearia (barbeiros ou dono), **When** o dono marca quais executam o serviço, **Then** o vínculo é salvo e a consulta de executores retorna exatamente esses barbeiros.
 2. **Given** um barbeiro vinculado a um serviço, **When** o dono remove o vínculo, **Then** o barbeiro deixa de aparecer como executor e o histórico de atendimentos já feitos por ele permanece.
-3. **Given** um barbeiro desativado ou de outra barbearia, **When** o dono tenta vinculá-lo, **Then** a operação é recusada.
+3. **Given** um usuário desativado, anonimizado ou de outra barbearia, **When** o dono tenta vinculá-lo, **Then** a operação é recusada.
 4. **Given** um serviço ativo sem nenhum barbeiro vinculado, **When** a lista de serviços é exibida, **Then** ele é sinalizado como "sem executor" para o dono perceber a lacuna.
 
 ---
@@ -76,14 +76,14 @@ Para um barbeiro vinculado a um serviço, o dono pode, opcionalmente, definir um
 
 1. **Given** um barbeiro vinculado a um serviço, **When** o dono define um preço específico, **Then** a consulta de preço e duração desse serviço para esse barbeiro devolve o valor específico e, para os demais barbeiros, o padrão.
 2. **Given** um valor específico definido, **When** o dono o remove, **Then** o barbeiro volta a usar o padrão do serviço.
-3. **Given** um valor específico inválido (duração zero ou negativa, preço negativo), **When** é enviado, **Then** nada é salvo.
+3. **Given** um valor específico inválido (duração fora do passo ou do intervalo permitido, preço negativo), **When** é enviado, **Then** nada é salvo.
 4. **Given** uma alteração no padrão do serviço, **When** um barbeiro tem valor específico definido, **Then** o valor específico dele não é afetado.
 
 ---
 
 ### User Story 5 - Consultar o catálogo (Priority: P2)
 
-Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e categoria. O barbeiro vê o que a barbearia oferece e os valores que valem para ele, sem poder alterar nada.
+Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e categoria. O barbeiro vê todos os serviços ativos da barbearia, com os que ele executa marcados e com os valores que valem para ele, sem poder alterar nada.
 
 **Why this priority**: O barbeiro precisa saber o que e por quanto atender na hora do balcão; é também a leitura que a agenda e a comanda farão.
 
@@ -91,7 +91,7 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 
 **Acceptance Scenarios**:
 
-1. **Given** um barbeiro autenticado, **When** ele consulta o catálogo, **Then** vê os serviços ativos da sua barbearia, com o preço e a duração que valem para ele.
+1. **Given** um barbeiro autenticado, **When** ele consulta o catálogo, **Then** vê todos os serviços ativos da sua barbearia, com os que ele executa marcados e, para esses, o preço e a duração específicos quando existirem; nos demais vê o padrão.
 2. **Given** dois barbeiros com valores específicos diferentes no mesmo serviço, **When** cada um consulta, **Then** cada um vê o seu valor.
 3. **Given** usuários de duas barbearias diferentes, **When** cada um consulta o catálogo, **Then** nenhum enxerga serviço da outra.
 4. **Given** um usuário não autenticado, **When** tenta consultar, **Then** o acesso é negado.
@@ -103,9 +103,9 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 - Dois cadastros simultâneos do mesmo nome na mesma barbearia: apenas um é criado, o outro é recusado como duplicado.
 - Nomes iguais em barbearias diferentes são permitidos.
 - Nome que difere só por maiúsculas, minúsculas ou espaços nas pontas conta como duplicado.
-- Serviço gratuito (preço zero) é permitido, por exemplo cortesia; duração zero não é.
+- Serviço gratuito (preço zero) é permitido, por exemplo cortesia; duração zero não é, nem duração que não seja múltiplo de 5 minutos ou passe de 8 horas.
 - Preço e duração alterados não mudam atendimentos já concluídos (snapshot do atendimento), apenas os novos.
-- Desativar um barbeiro não apaga seus vínculos nem valores específicos; se ele for reativado, volta com eles.
+- Desativar um executor não apaga seus vínculos nem valores específicos; se ele for reativado, volta com eles.
 - Categoria sem nenhum serviço ativo não aparece na consulta de quem atende, mas o dono ainda a vê.
 - Tentar remover uma categoria que ainda tem serviços (ativos ou desativados) é recusado.
 - Renomear ou reordenar uma categoria não altera os serviços que pertencem a ela.
@@ -118,23 +118,27 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 
 - Q: O catálogo é único para a barbearia ou cada unidade tem o seu? → A: Único por barbearia, válido para todas as unidades; preço por unidade fica fora do escopo.
 - Q: A categoria é texto livre ou lista gerenciada pelo dono? → A: Lista gerenciada pelo dono (criar, renomear, reordenar); cada serviço pertence a uma categoria.
+- Q: A duração aceita qualquer minuto ou um passo fixo? → A: Múltiplo de 5 minutos, de 5 até 480 minutos (8 horas), tanto no padrão do serviço quanto no valor específico por barbeiro.
+- Q: O dono pode ser vinculado como executor de um serviço? → A: Sim. Dono e barbeiro ativos da barbearia podem ser executores; o papel de cada um não muda.
+- Q: Há limite de tamanho para nome e descrição e teto para o preço? → A: Nome até 80 caracteres, descrição até 500 e preço até R$ 10.000,00 (1.000.000 centavos), valendo também para o preço específico por executor.
+- Q: O barbeiro vê o catálogo inteiro ou só os serviços em que é executor? → A: Vê todos os serviços ativos da barbearia, com os que ele executa marcados; o valor específico só se aplica onde ele é executor, nos demais vale o padrão.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: O sistema MUST permitir ao dono cadastrar um serviço com nome, descrição (opcional), duração, preço e categoria.
+- **FR-001**: O sistema MUST permitir ao dono cadastrar um serviço com nome (até 80 caracteres), descrição opcional (até 500 caracteres), duração, preço e categoria.
 - **FR-002**: O sistema MUST permitir ao dono editar qualquer um desses dados de um serviço existente.
-- **FR-003**: A duração MUST ser um número inteiro de minutos maior que zero; o preço MUST ser um valor monetário em centavos inteiros, maior ou igual a zero.
+- **FR-003**: A duração MUST ser um número inteiro de minutos, múltiplo de 5, entre 5 e 480 (inclusive), valendo igualmente para o padrão do serviço e para o valor específico por barbeiro; o preço MUST ser um valor monetário em centavos inteiros, entre 0 e 1.000.000 (R$ 10.000,00), valendo também para o preço específico.
 - **FR-004**: O nome MUST ser único por barbearia, ignorando diferença de maiúsculas, minúsculas e espaços nas pontas.
 - **FR-005**: O sistema MUST permitir ao dono desativar e reativar um serviço; um serviço NUNCA é apagado.
 - **FR-006**: Um serviço desativado MUST deixar de ser oferecido para novos atendimentos e continuar disponível para o histórico e para reativação.
-- **FR-007**: O sistema MUST permitir ao dono definir quais barbeiros ativos da barbearia executam cada serviço e remover esses vínculos.
-- **FR-008**: O sistema MUST recusar o vínculo de barbeiro desativado ou de outra barbearia.
+- **FR-007**: O sistema MUST permitir ao dono definir quais usuários ativos da barbearia (barbeiros ou o próprio dono) executam cada serviço e remover esses vínculos.
+- **FR-008**: O sistema MUST recusar o vínculo de usuário desativado, anonimizado ou de outra barbearia.
 - **FR-009**: O sistema MUST permitir ao dono definir, por vínculo barbeiro-serviço, um preço e/ou uma duração específicos, e removê-los; na ausência do valor específico vale o padrão do serviço.
 - **FR-010**: O sistema MUST oferecer uma consulta que, dado um serviço e um barbeiro, devolve o preço e a duração aplicáveis (específicos ou padrão), para uso da agenda e da comanda.
 - **FR-011**: O sistema MUST oferecer uma consulta de quem executa cada serviço.
-- **FR-012**: Dono e barbeiro MUST poder consultar o catálogo de serviços ativos da própria barbearia; apenas o dono MUST poder criar, editar, desativar, reativar e alterar vínculos e valores específicos.
+- **FR-012**: Dono e barbeiro MUST poder consultar o catálogo de serviços ativos da própria barbearia, o barbeiro vendo todos eles com os seus marcados; apenas o dono MUST poder criar, editar, desativar, reativar e alterar vínculos e valores específicos.
 - **FR-013**: Todo dado do catálogo MUST pertencer a uma barbearia e ser invisível e intocável para usuários de outra; o isolamento MUST ser garantido no banco de dados, não só na aplicação, e coberto por testes de vazamento entre barbearias.
 - **FR-014**: O sistema MUST registrar quem criou, editou, desativou ou reativou um serviço e quando, e vínculos e valores específicos alterados.
 - **FR-015**: Alterações em preço, duração ou vínculos MUST valer apenas para novos atendimentos; atendimentos já concluídos mantêm os valores do momento em que foram concluídos.
@@ -147,7 +151,7 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 
 - **Serviço (service)**: o que a barbearia vende. Tem nome, descrição opcional, duração padrão em minutos, preço padrão em centavos, categoria e situação (ativo ou desativado). Pertence a uma barbearia.
 - **Categoria (service category)**: agrupamento de serviços, como cabelo, barba e combos. Lista gerenciada pelo dono, com nome único por barbearia e ordem de exibição própria.
-- **Vínculo barbeiro-serviço (barber service)**: indica que um barbeiro executa um serviço; pode carregar preço e/ou duração específicos opcionais. Relaciona um serviço a um usuário com papel de barbeiro, ambos da mesma barbearia.
+- **Vínculo barbeiro-serviço (barber service)**: indica que um barbeiro executa um serviço; pode carregar preço e/ou duração específicos opcionais. Relaciona um serviço a um usuário executor (barbeiro ou dono), ambos da mesma barbearia.
 - **Evento de auditoria**: registro de quem alterou o catálogo e quando; reaproveita a trilha de eventos de segurança da feature 002 quando couber.
 
 ## Success Criteria *(mandatory)*
