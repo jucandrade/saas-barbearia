@@ -34,7 +34,7 @@ Restrições: `UNIQUE (tenant_id, id)` (alvo da chave composta); `UNIQUE (tenant
 | `status` | enum `active` \| `deactivated` | Padrão `active` |
 | `created_at`, `updated_at` | timestamptz | |
 
-Restrições: `UNIQUE (tenant_id, id)`; `UNIQUE (tenant_id, name_key)`; `CHECK` de tamanho do nome e da descrição; `CHECK (duration_minutes between 5 and 480 and duration_minutes % 5 = 0)`; `CHECK (price_cents between 0 and 1000000)`.
+Restrições: `UNIQUE (tenant_id, id)`; `UNIQUE (tenant_id, name_key)` (vale contra serviços desativados também, sem filtro por status); `CHECK` de tamanho do nome e da descrição; `CHECK (duration_minutes between 5 and 480 and duration_minutes % 5 = 0)`; `CHECK (price_cents between 0 and 1000000)`.
 
 **Nunca apagado**: `app_runtime` não tem `DELETE` nesta tabela (R8).
 

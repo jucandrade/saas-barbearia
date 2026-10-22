@@ -20,6 +20,7 @@ pnpm dev
 2. Cadastrar três serviços: "Corte" (Cabelo, 30 min, R$ 50,00), "Barba" (Barba, 30 min, R$ 35,00) e "Corte + Barba" (Cabelo, 60 min, R$ 80,00).
 3. Editar o preço de "Barba" para R$ 40,00: a lista mostra o valor novo.
 4. Renomear "Cabelo" para "Cabelos" e subir "Barba" acima dela: os serviços continuam nas categorias e a ordem muda.
+5. Cronometrar (SC-001): cadastrar um serviço completo leva menos de 1 minuto, e um catálogo de 15 serviços menos de 15 minutos.
 
 **Negativos**:
 
@@ -37,6 +38,7 @@ pnpm dev
 1. Desativar "Corte + Barba": ele some das opções ativas e aparece como desativado para o dono; o barbeiro já não o vê.
 2. Reativar: volta com os mesmos dados, executores e valores específicos.
 3. Conferir que não existe ação de apagar serviço na tela e que `DELETE /services/{id}` não existe.
+4. Com "Corte + Barba" desativado, tentar cadastrar outro serviço com esse nome: recusado (o nome continua reservado); renomear o desativado libera o nome.
 
 ## Cenário 4: executores (US3)
 
@@ -59,6 +61,7 @@ pnpm dev
 1. Entrar no app do barbeiro: a tela mostra todos os serviços **ativos**, agrupados por categoria, com os dele destacados e os valores que valem para ele.
 2. Sair e tentar abrir o catálogo sem sessão: acesso negado.
 3. Entrar com um usuário de **outra** barbearia: nenhum serviço ou categoria da primeira aparece.
+4. Medição manual (SC-006): com 100 serviços cadastrados, a lista abre em menos de 2 segundos no celular em conexão móvel comum. O teste automatizado `catalog-performance.spec.ts` mede só o lado do servidor e serve de proxy.
 
 ## Cenário 7: auditoria e isolamento (SC-002, SC-007)
 

@@ -8,7 +8,9 @@ Decisões da Fase 0. Cada uma segue o formato Decisão / Racional / Alternativas
 
 **Racional**: princípio VI. A regra "quem pode ser executor" é da Identidade (status e papel vivem lá) e muda num lugar só.
 
-**Alternativas**: consulta direta a `users` (rejeitada: acopla contextos); duplicar status de usuário no catálogo (rejeitada: dado desatualizado).
+**Kit HTTP compartilhado**: por código (não por dados), o catálogo importa de `identity/` o `ApiError`, `ZodPipe`, `ResourceIdPipe`, os decoradores `@Roles` e `@CurrentUser` e o `ErrorFilter` global. É aceito como acoplamento de código sem estado; mover esse kit para uma pasta comum será considerado (por ADR) quando um terceiro contexto o usar.
+
+**Alternativas**: consulta direta a `users` (rejeitada: acopla contextos); duplicar status de usuário no catálogo (rejeitada: dado desatualizado); copiar o kit HTTP (rejeitada: convenções de erro divergiriam).
 
 ## R2. Isolamento e integridade entre tenants
 
@@ -26,7 +28,7 @@ Cada tabela referenciada ganha um índice único `(tenant_id, id)` (em `users`, 
 
 ## R3. Unicidade do nome
 
-**Decisão**: a aplicação calcula `name_key = normalizeName(name)` (função pura do domínio: `trim`, normalização Unicode NFC, `toLocaleLowerCase('pt-BR')`) e o banco impõe `UNIQUE (tenant_id, name_key)` em serviços e em categorias. Violação (`23505`) vira `409 SERVICE_NAME_TAKEN` ou `409 CATEGORY_NAME_TAKEN`, o que também resolve cadastros simultâneos (spec, caso de borda).
+**Decisão**: a aplicação calcula `name_key = normalizeName(name)` (função pura do domínio: `trim`, normalização Unicode NFC, `toLocaleLowerCase('pt-BR')`) e o banco impõe `UNIQUE (tenant_id, name_key)` em serviços e em categorias. Violação (`23505`) vira `409 SERVICE_NAME_TAKEN` ou `409 CATEGORY_NAME_TAKEN`, o que também resolve cadastros simultâneos (spec, caso de borda). O índice **não filtra por status**: o nome de um serviço desativado continua reservado (FR-004); para reaproveitar o nome o dono renomeia o desativado.
 
 **Racional**: comparação determinística e testável no domínio, independente do locale do banco (o `lower()` do Postgres muda com o `LC_CTYPE`, e a CI pode divergir do ambiente local).
 
@@ -94,7 +96,7 @@ Sem relógio, sem banco, sem framework. Testes escritos antes (Red → Green →
 
 ## R11. Contratos
 
-**Decisão**: schemas Zod em `packages/contracts/src/catalog/` e registro de rotas `CATALOG_ROUTES` somado ao `ROUTES` existente (o OpenAPI continua gerado de um registro único). `HttpMethod` passa de `"get" | "post"` para incluir `"put" | "patch" | "delete"`; o `routes.spec.ts` e o gerador de OpenAPI são ajustados. Acesso: `session` para leitura e `owner` para escrita. Erros novos: `SERVICE_NAME_TAKEN`, `CATEGORY_NAME_TAKEN`, `CATEGORY_NOT_EMPTY`, `INVALID_ORDER`, `EXECUTOR_NOT_ELIGIBLE`; reaproveitados: `INVALID_DATA`, `NOT_FOUND`, `NO_PERMISSION`, `INVALID_SESSION`. Identificador de outra barbearia responde `404 NOT_FOUND`, como na 002.
+**Decisão**: schemas Zod em `packages/contracts/src/catalog/` e registro de rotas `CATALOG_ROUTES`. O registro atual de `identity/routes.ts` passa a se chamar `IDENTITY_ROUTES`, e um novo `packages/contracts/src/routes.ts` exporta `ROUTES = [...IDENTITY_ROUTES, ...CATALOG_ROUTES]`, de modo que o OpenAPI continua gerado de um registro único e os importadores atuais seguem usando `ROUTES`. `HttpMethod` passa de `"get" | "post"` para incluir `"put" | "patch" | "delete"`; o `routes.spec.ts` e o gerador de OpenAPI são ajustados. Acesso: `session` para leitura e `owner` para escrita. Erros novos: `SERVICE_NAME_TAKEN`, `CATEGORY_NAME_TAKEN`, `CATEGORY_NOT_EMPTY`, `INVALID_ORDER`, `EXECUTOR_NOT_ELIGIBLE`; reaproveitados: `INVALID_DATA`, `NOT_FOUND`, `NO_PERMISSION`, `INVALID_SESSION`. Identificador de outra barbearia responde `404 NOT_FOUND`, como na 002.
 
 ## R12. Telas
 

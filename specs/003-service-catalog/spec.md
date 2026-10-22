@@ -42,42 +42,42 @@ O dono pode desativar um serviço que a barbearia deixou de oferecer e reativá-
 
 1. **Given** um serviço ativo, **When** o dono o desativa, **Then** ele deixa de aparecer entre os serviços disponíveis para novos atendimentos e fica listado como desativado.
 2. **Given** um serviço desativado, **When** o dono o reativa, **Then** ele volta a ser oferecido com os dados e vínculos que tinha.
-3. **Given** um serviço já usado em atendimentos passados, **When** ele é desativado ou editado, **Then** o histórico desses atendimentos permanece intacto.
+3. **Given** um serviço editado ou desativado, **When** o dono consulta o histórico dele, **Then** os eventos de auditoria anteriores permanecem intactos e o serviço continua consultável pelo dono, para que registros futuros de atendimento possam referenciá-lo.
 4. **Given** qualquer serviço, **When** alguém tenta apagá-lo, **Then** não existe essa operação; apenas desativar.
 
 ---
 
-### User Story 3 - Definir quais barbeiros executam cada serviço (Priority: P2)
+### User Story 3 - Definir quem executa cada serviço (Priority: P2)
 
 O dono define, para cada serviço, quais executores o realizam. Executor é qualquer usuário ativo da barbearia, barbeiro ou o próprio dono quando ele também atende. Um executor só pode ser agendado para os serviços vinculados a ele.
 
 **Why this priority**: A agenda precisa saber quem pode fazer o quê. É necessário assim que há mais de um barbeiro com habilidades diferentes, mas o catálogo já é útil sem isso.
 
-**Independent Test**: Vincular um serviço a dois dos três barbeiros e confirmar que a consulta de "quem executa" retorna só esses dois; desvincular um e confirmar que sai da lista.
+**Independent Test**: Vincular um serviço a dois dos três executores e confirmar que a consulta de "quem executa" retorna só esses dois; desvincular um e confirmar que sai da lista.
 
 **Acceptance Scenarios**:
 
-1. **Given** um serviço e usuários ativos da barbearia (barbeiros ou dono), **When** o dono marca quais executam o serviço, **Then** o vínculo é salvo e a consulta de executores retorna exatamente esses barbeiros.
-2. **Given** um barbeiro vinculado a um serviço, **When** o dono remove o vínculo, **Then** o barbeiro deixa de aparecer como executor e o histórico de atendimentos já feitos por ele permanece.
+1. **Given** um serviço e usuários ativos da barbearia (barbeiros ou dono), **When** o dono marca quais executam o serviço, **Then** o vínculo é salvo e a consulta de executores retorna exatamente esses usuários.
+2. **Given** um executor vinculado a um serviço, **When** o dono remove o vínculo, **Then** ele deixa de aparecer como executor do serviço e os eventos de auditoria anteriores permanecem.
 3. **Given** um usuário desativado, anonimizado ou de outra barbearia, **When** o dono tenta vinculá-lo, **Then** a operação é recusada.
-4. **Given** um serviço ativo sem nenhum barbeiro vinculado, **When** a lista de serviços é exibida, **Then** ele é sinalizado como "sem executor" para o dono perceber a lacuna.
+4. **Given** um serviço ativo sem nenhum executor vinculado, **When** a lista de serviços é exibida, **Then** ele é sinalizado como "sem executor" para o dono perceber a lacuna.
 
 ---
 
-### User Story 4 - Preço e duração específicos por barbeiro (Priority: P3)
+### User Story 4 - Preço e duração específicos por executor (Priority: P3)
 
-Para um barbeiro vinculado a um serviço, o dono pode, opcionalmente, definir um preço e/ou uma duração próprios, diferentes dos valores padrão do serviço. Onde não houver valor específico, vale o padrão do serviço.
+Para um executor vinculado a um serviço, o dono pode, opcionalmente, definir um preço e/ou uma duração próprios, diferentes dos valores padrão do serviço. Onde não houver valor específico, vale o padrão do serviço.
 
 **Why this priority**: Atende barbearias em que um barbeiro mais experiente cobra mais ou leva mais tempo, mas é opcional e a maioria dos serviços usa o padrão.
 
-**Independent Test**: Definir um preço específico para um barbeiro em um serviço e confirmar que a consulta devolve o preço específico para ele e o padrão para os demais; remover o valor específico e confirmar a volta ao padrão.
+**Independent Test**: Definir um preço específico para um executor em um serviço e confirmar que a consulta devolve o preço específico para ele e o padrão para os demais; remover o valor específico e confirmar a volta ao padrão.
 
 **Acceptance Scenarios**:
 
-1. **Given** um barbeiro vinculado a um serviço, **When** o dono define um preço específico, **Then** a consulta de preço e duração desse serviço para esse barbeiro devolve o valor específico e, para os demais barbeiros, o padrão.
-2. **Given** um valor específico definido, **When** o dono o remove, **Then** o barbeiro volta a usar o padrão do serviço.
+1. **Given** um executor vinculado a um serviço, **When** o dono define um preço específico, **Then** a consulta de preço e duração desse serviço para esse executor devolve o valor específico e, para os demais, o padrão.
+2. **Given** um valor específico definido, **When** o dono o remove, **Then** o executor volta a usar o padrão do serviço.
 3. **Given** um valor específico inválido (duração fora do passo ou do intervalo permitido, preço negativo), **When** é enviado, **Then** nada é salvo.
-4. **Given** uma alteração no padrão do serviço, **When** um barbeiro tem valor específico definido, **Then** o valor específico dele não é afetado.
+4. **Given** uma alteração no padrão do serviço, **When** um executor tem valor específico definido, **Then** o valor específico dele não é afetado.
 
 ---
 
@@ -103,8 +103,9 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 - Dois cadastros simultâneos do mesmo nome na mesma barbearia: apenas um é criado, o outro é recusado como duplicado.
 - Nomes iguais em barbearias diferentes são permitidos.
 - Nome que difere só por maiúsculas, minúsculas ou espaços nas pontas conta como duplicado.
+- O nome de um serviço desativado continua reservado: não é possível cadastrar outro serviço com o mesmo nome enquanto o desativado existir; para reaproveitar o nome, o dono renomeia o desativado.
 - Serviço gratuito (preço zero) é permitido, por exemplo cortesia; duração zero não é, nem duração que não seja múltiplo de 5 minutos ou passe de 8 horas.
-- Preço e duração alterados não mudam atendimentos já concluídos (snapshot do atendimento), apenas os novos.
+- Preço e duração alterados valem apenas para novos atendimentos; o resguardo dos atendimentos já concluídos (snapshot na conclusão) é responsabilidade da feature da comanda (ver Assumptions).
 - Desativar um executor não apaga seus vínculos nem valores específicos; se ele for reativado, volta com eles.
 - Categoria sem nenhum serviço ativo não aparece na consulta de quem atende, mas o dono ainda a vê.
 - Tentar remover uma categoria que ainda tem serviços (ativos ou desativados) é recusado.
@@ -130,18 +131,18 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 - **FR-001**: O sistema MUST permitir ao dono cadastrar um serviço com nome (até 80 caracteres), descrição opcional (até 500 caracteres), duração, preço e categoria.
 - **FR-002**: O sistema MUST permitir ao dono editar qualquer um desses dados de um serviço existente.
 - **FR-003**: A duração MUST ser um número inteiro de minutos, múltiplo de 5, entre 5 e 480 (inclusive), valendo igualmente para o padrão do serviço e para o valor específico por barbeiro; o preço MUST ser um valor monetário em centavos inteiros, entre 0 e 1.000.000 (R$ 10.000,00), valendo também para o preço específico.
-- **FR-004**: O nome MUST ser único por barbearia, ignorando diferença de maiúsculas, minúsculas e espaços nas pontas.
+- **FR-004**: O nome MUST ser único por barbearia, ignorando diferença de maiúsculas, minúsculas e espaços nas pontas, e a unicidade vale também contra serviços desativados.
 - **FR-005**: O sistema MUST permitir ao dono desativar e reativar um serviço; um serviço NUNCA é apagado.
 - **FR-006**: Um serviço desativado MUST deixar de ser oferecido para novos atendimentos e continuar disponível para o histórico e para reativação.
 - **FR-007**: O sistema MUST permitir ao dono definir quais usuários ativos da barbearia (barbeiros ou o próprio dono) executam cada serviço e remover esses vínculos.
 - **FR-008**: O sistema MUST recusar o vínculo de usuário desativado, anonimizado ou de outra barbearia.
-- **FR-009**: O sistema MUST permitir ao dono definir, por vínculo barbeiro-serviço, um preço e/ou uma duração específicos, e removê-los; na ausência do valor específico vale o padrão do serviço.
-- **FR-010**: O sistema MUST oferecer uma consulta que, dado um serviço e um barbeiro, devolve o preço e a duração aplicáveis (específicos ou padrão), para uso da agenda e da comanda.
-- **FR-011**: O sistema MUST oferecer uma consulta de quem executa cada serviço.
+- **FR-009**: O sistema MUST permitir ao dono definir, por vínculo executor-serviço, um preço e/ou uma duração específicos, e removê-los; na ausência do valor específico vale o padrão do serviço.
+- **FR-010**: O sistema MUST oferecer uma consulta que, dado um serviço e um executor, devolve o preço e a duração aplicáveis (específicos ou padrão), para uso da agenda e da comanda.
+- **FR-011**: O sistema MUST oferecer uma consulta de quem executa cada serviço, aberta a dono e barbeiro. O barbeiro vê apenas o identificador e o nome dos executores ativos e, dos valores específicos, somente os seus; o dono vê todos. O e-mail de um usuário nunca é exposto por essa consulta.
 - **FR-012**: Dono e barbeiro MUST poder consultar o catálogo de serviços ativos da própria barbearia, o barbeiro vendo todos eles com os seus marcados; apenas o dono MUST poder criar, editar, desativar, reativar e alterar vínculos e valores específicos.
 - **FR-013**: Todo dado do catálogo MUST pertencer a uma barbearia e ser invisível e intocável para usuários de outra; o isolamento MUST ser garantido no banco de dados, não só na aplicação, e coberto por testes de vazamento entre barbearias.
 - **FR-014**: O sistema MUST registrar quem criou, editou, desativou ou reativou um serviço e quando, e vínculos e valores específicos alterados.
-- **FR-015**: Alterações em preço, duração ou vínculos MUST valer apenas para novos atendimentos; atendimentos já concluídos mantêm os valores do momento em que foram concluídos.
+- **FR-015**: Alterações em preço, duração ou vínculos MUST valer apenas para novos atendimentos. Esta feature MUST expor os valores atuais de forma determinística (FR-010) para que a comanda grave o snapshot na conclusão; a gravação do snapshot e a imutabilidade dos atendimentos concluídos pertencem à feature da comanda.
 - **FR-016**: Serviços MUST ser organizados por categoria, e a lista MUST poder ser exibida agrupada por ela.
 - **FR-017**: O catálogo MUST ser único por barbearia, valendo para todas as suas unidades, com os mesmos serviços, preços e durações em todas; preço ou disponibilidade por unidade ficam fora do escopo.
 - **FR-018**: A categoria MUST ser gerenciada pelo dono como uma lista própria da barbearia: ele pode criar, renomear e reordenar categorias, e cada serviço pertence a exatamente uma categoria. O nome da categoria é único por barbearia (mesma regra de comparação do FR-004), e uma categoria que ainda tem serviços não pode ser removida.
@@ -151,8 +152,8 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 
 - **Serviço (service)**: o que a barbearia vende. Tem nome, descrição opcional, duração padrão em minutos, preço padrão em centavos, categoria e situação (ativo ou desativado). Pertence a uma barbearia.
 - **Categoria (service category)**: agrupamento de serviços, como cabelo, barba e combos. Lista gerenciada pelo dono, com nome único por barbearia e ordem de exibição própria.
-- **Vínculo barbeiro-serviço (barber service)**: indica que um barbeiro executa um serviço; pode carregar preço e/ou duração específicos opcionais. Relaciona um serviço a um usuário executor (barbeiro ou dono), ambos da mesma barbearia.
-- **Evento de auditoria**: registro de quem alterou o catálogo e quando; reaproveita a trilha de eventos de segurança da feature 002 quando couber.
+- **Vínculo executor-serviço (service executor)**: indica que um usuário executa um serviço; pode carregar preço e/ou duração específicos opcionais. Relaciona um serviço a um usuário executor (barbeiro ou dono), ambos da mesma barbearia.
+- **Evento de auditoria do catálogo (catalog event)**: registro imutável de quem alterou o catálogo e quando, em trilha própria do catálogo, separada da trilha de segurança da feature 002 e com o mesmo desenho (somente inclusão, sem dado pessoal).
 
 ## Success Criteria *(mandatory)*
 
@@ -164,16 +165,16 @@ Dono e barbeiro consultam o catálogo: serviços ativos com preço, duração e 
 - **SC-004**: Em 100% dos casos, a consulta de preço e duração para um barbeiro devolve o valor específico quando existir e o padrão caso contrário.
 - **SC-005**: Desativar e reativar um serviço não perde nenhum dado nem vínculo: após o ciclo, o serviço e seus vínculos estão idênticos ao estado anterior.
 - **SC-006**: A lista do catálogo com 100 serviços é exibida em menos de 2 segundos em conexão móvel comum.
-- **SC-007**: Nenhuma alteração de catálogo modifica retroativamente valores de atendimentos já concluídos.
+- **SC-007**: Nenhuma alteração do catálogo apaga ou reescreve um evento de auditoria anterior (a trilha é somente inclusão); o resguardo dos atendimentos concluídos é verificado na feature da comanda.
 
 ## Assumptions
 
-- A feature 002 (barbearia, usuários dono/barbeiro, sessão e isolamento por RLS) está disponível e é reaproveitada, inclusive a trilha de eventos.
+- A feature 002 (barbearia, usuários dono/barbeiro, sessão e isolamento por RLS) está disponível e é reaproveitada; a auditoria do catálogo usa trilha própria, no mesmo desenho da 002.
 - Apenas o dono escreve no catálogo; o barbeiro só lê. Não há papel intermediário nesta feature.
 - Serviços não são apagados nunca; a desativação cobre a necessidade de "remover" do dia a dia.
 - A duração é única por serviço (sem etapas ou tempos de preparo separados); a duração define o bloco de agenda e os minutos do rateio em features futuras.
 - Valores monetários seguem a constituição: centavos inteiros, sem ponto flutuante.
 - Não há importação em massa nem catálogo inicial padrão nesta feature; o dono cadastra os serviços manualmente.
 - Fora do escopo: produtos (venda de itens físicos), pacotes e combos com preço próprio, regras de elegibilidade por plano do clube, comissão por serviço, fotos e promoções. Cada um é spec própria.
-- O consumo do catálogo pela agenda e pela comanda (agendamento, snapshot na conclusão) pertence às features dessas áreas; esta feature entrega o cadastro e as consultas que elas usarão.
+- O consumo do catálogo pela agenda e pela comanda (agendamento, snapshot de preço, duração e executor na conclusão do atendimento) pertence às features dessas áreas; esta feature entrega o cadastro e as consultas que elas usarão.
 - Tela de gestão no admin web para o dono e consulta no app do barbeiro; o link público de agendamento passa a ler o catálogo só quando a feature da agenda existir.

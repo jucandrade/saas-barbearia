@@ -88,7 +88,7 @@ Entrada: `{ "name": string, "description"?: string, "categoryId": uuid, "priceCe
 |---|---|
 | `201` | `Service` (status `active`) |
 | `400 INVALID_DATA` | Cada problema em `fields` (nome, duração fora do passo ou do intervalo, preço fora do intervalo, categoria inexistente) |
-| `409 SERVICE_NAME_TAKEN` | "Já existe um serviço com esse nome." |
+| `409 SERVICE_NAME_TAKEN` | "Já existe um serviço com esse nome." (inclui serviços desativados, que continuam reservando o nome) |
 
 Evento: `service_created`.
 
@@ -106,7 +106,7 @@ Entrada: qualquer subconjunto de `name`, `description` (`null` limpa), `category
 
 ## Executores
 
-### `GET /services/{id}/executors` — session
+### `GET /services/{id}/executors` — session (FR-011)
 
 `200`: `{ "executors": [{ "userId": "uuid", "name": "string", "priceCents": int|null, "durationMinutes": int|null }] }`. Só usuários `active`. O barbeiro vê apenas `userId` e `name` dos colegas; os valores específicos são omitidos para quem não é o próprio executor nem dono. Nunca devolve e-mail. Barbeiro em serviço desativado: `404`.
 
