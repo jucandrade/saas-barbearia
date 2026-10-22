@@ -19,6 +19,7 @@
     "openapi": "tsc -p tsconfig.build.json && node scripts/openapi.mjs"
   },
   "dependencies": {
+    "@barbearia/domain": "workspace:*",
     "zod": "^4.6.7"
   }
 }

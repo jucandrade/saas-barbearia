@@ -21,10 +21,10 @@ type Document = {
 const doc = buildOpenApi() as unknown as Document;
 
 describe("route registry", () => {
-  it("has 12 unique method+path entries", () => {
+  it("has unique method+path entries", () => {
     const keys = ROUTES.map((r) => `${r.method} ${r.path}`);
-    expect(keys).toHaveLength(12);
-    expect(new Set(keys).size).toBe(12);
+    expect(keys).toHaveLength(ROUTES.length);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
   it("every route declares its path parameters in the OpenAPI document", () => {

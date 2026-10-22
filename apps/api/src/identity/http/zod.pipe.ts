@@ -19,6 +19,8 @@ function fieldMessage(problem: z.core.$ZodIssue): string {
         : "Formato inválido.";
     case "invalid_value":
       return "Valor não permitido.";
+    case "custom":
+      return problem.message;
     default:
       return "Valor inválido.";
   }
