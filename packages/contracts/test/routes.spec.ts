@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildOpenApi, ROUTES } from "../src/index.js";
+import { CATALOG_ROUTES } from "../src/catalog/routes.js";
 
 interface Operation {
   security: unknown[];
@@ -25,6 +26,13 @@ describe("route registry", () => {
     const keys = ROUTES.map((r) => `${r.method} ${r.path}`);
     expect(keys).toHaveLength(ROUTES.length);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("registers the 15 endpoints of the catalog", () => {
+    expect(CATALOG_ROUTES).toHaveLength(15);
+    for (const route of CATALOG_ROUTES) {
+      expect(ROUTES).toContain(route);
+    }
   });
 
   it("every route declares its path parameters in the OpenAPI document", () => {
