@@ -113,6 +113,7 @@ O dono pode remover o logo e restaurar as cores padrão, voltando à aparência 
 - Nome com espaços nas pontas é aparado; nome só com espaços é recusado.
 - Duas pessoas alterando a identidade ao mesmo tempo: vale a última a salvar, e as duas alterações ficam no registro.
 - Cor principal igual à cor de destaque é permitida; o resultado continua legível.
+- Uma mensagem de erro, aviso ou sucesso mantém a sua cor mesmo que a barbearia escolha um tom parecido para a identidade.
 - Escolher um tom de uma paleta que deixou de existir (paleta futura revisada) cai no tom padrão, nunca em tela ilegível.
 - Dono sem conexão no app: as funções rápidas informam que precisam de conexão e não fazem nada pela metade.
 - Sessão do dono no app expira após 12 horas sem uso: o app pede nova entrada, e as funções rápidas não fazem nada pela metade.
@@ -123,6 +124,7 @@ O dono pode remover o logo e restaurar as cores padrão, voltando à aparência 
 ### Session 2026-10-22
 
 - Q: Por quanto tempo o dono pode ficar sem usar o app antes de precisar entrar de novo? → A: 12 horas sem uso, igual ao painel do dono (regra da feature 002, sem mudança).
+- Q: Em quais partes da tela a cor principal e a cor de destaque são usadas? → A: A principal em botões, links, cabeçalho e item de menu ativo; a de destaque em selos, itens selecionados e realces; as cores de estado (erro, aviso, sucesso) são sempre fixas do produto, nunca da paleta.
 
 ## Requirements *(mandatory)*
 
@@ -136,7 +138,8 @@ O dono pode remover o logo e restaurar as cores padrão, voltando à aparência 
 - **FR-006**: O sistema MUST mostrar ao dono uma prévia da identidade (nome, logo e cores) antes de salvar.
 - **FR-007**: Apenas o dono MUST poder alterar a identidade visual; o barbeiro e quem não está autenticado MUST ser negados.
 - **FR-008**: A identidade MUST pertencer a uma barbearia e ser invisível e intocável para usuários de outra; o isolamento MUST ser garantido no banco de dados e coberto por testes de vazamento entre barbearias.
-- **FR-009**: O nome, o logo e as cores da barbearia MUST aparecer para seus usuários no painel de gestão e no app, substituindo os padrões do produto.
+- **FR-009**: O nome, o logo e as cores da barbearia MUST aparecer para seus usuários no painel de gestão e no app, substituindo os padrões do produto. A cor principal MUST ser usada em botões, links, cabeçalho e item de menu ativo; a cor de destaque, em selos, itens selecionados e realces.
+- **FR-023**: As cores de estado (erro, aviso e sucesso) MUST ser sempre as do produto e MUST NOT vir da paleta nem mudar com a identidade da barbearia.
 - **FR-010**: Uma barbearia sem personalização MUST aparecer com a aparência padrão do produto e o nome já cadastrado, sem logo.
 - **FR-011**: Telas que antecedem o login (entrar, convite, recuperação de senha) MUST usar a aparência padrão do produto.
 - **FR-012**: Uma alteração de identidade MUST valer para os demais usuários da barbearia na próxima tela que abrirem, sem exigir nova entrada.
