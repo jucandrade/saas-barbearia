@@ -4,3 +4,7 @@ export * from "./session.js";
 export * from "./access-token.js";
 export * from "./unit.js";
 export * from "./user.js";
+export * from "./service-category.js";
+export * from "./service.js";
+export * from "./service-executor.js";
+export * from "./catalog-event.js";
