@@ -49,7 +49,7 @@ async function attempt(
         tenantId,
       ]);
     }
-    const result = await client.query(sql);
+    const result = await client.query<Record<string, unknown>>(sql);
     return { rows: result.rows, affected: result.rowCount ?? 0 };
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };

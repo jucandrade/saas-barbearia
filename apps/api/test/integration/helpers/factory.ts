@@ -46,7 +46,7 @@ export interface UserToCreate {
   name?: string;
   email?: string;
   role?: "owner" | "barber";
-  status?: "invited" | "active" | "deactivated";
+  status?: "invited" | "active" | "deactivated" | "anonymized";
   passwordHash?: string | null;
 }
 
@@ -67,6 +67,7 @@ export async function createUser(data: UserToCreate): Promise<string> {
             ? "test-hash"
             : null
           : data.passwordHash,
+      anonymizedAt: status === "anonymized" ? new Date() : null,
     });
   });
   return id;
