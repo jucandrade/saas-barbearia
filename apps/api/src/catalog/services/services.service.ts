@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
-import { normalizeName } from "@barbearia/domain";
+import { normalizeName, resolveTerms } from "@barbearia/domain";
 import type {
   CreateServiceInput,
   Service,
@@ -92,7 +92,7 @@ export class ServicesService {
           asc(serviceCategory.createdAt),
           asc(service.nameKey),
         );
-      return this.withCounts(
+      return this.decorate(
         tx,
         current,
         rows.map(({ row }) => toService(row)),
@@ -262,11 +262,69 @@ export class ServicesService {
     current: AuthenticatedUser,
     row: ServiceRow,
   ): Promise<Service> {
-    const [one] = await this.withCounts(tx, current, [toService(row)]);
+    const [one] = await this.decorate(tx, current, [toService(row)]);
     if (one === undefined) {
-      throw new Error("withCounts lost a service");
+      throw new Error("decorate lost a service");
     }
     return one;
+  }
+
+  /** What depends on the caller: `mine`, `effective` and, for owners, `executorCount`. */
+  private async decorate(
+    tx: Transaction,
+    current: AuthenticatedUser,
+    services: Service[],
+  ): Promise<Service[]> {
+    return this.withCounts(
+      tx,
+      current,
+      await this.withMine(tx, current, services),
+    );
+  }
+
+  /**
+   * Marks the services the caller performs and resolves the price and duration that apply to
+   * him (FR-010): his specific values where set, the service defaults otherwise. One query.
+   */
+  private async withMine(
+    tx: Transaction,
+    current: AuthenticatedUser,
+    services: Service[],
+  ): Promise<Service[]> {
+    if (services.length === 0) {
+      return services;
+    }
+    const links = await tx
+      .select()
+      .from(serviceExecutor)
+      .where(
+        and(
+          eq(serviceExecutor.userId, current.userId),
+          inArray(
+            serviceExecutor.serviceId,
+            services.map((s) => s.id),
+          ),
+        ),
+      );
+    const byService = new Map(links.map((link) => [link.serviceId, link]));
+    return services.map((s) => {
+      const link = byService.get(s.id);
+      if (link === undefined) {
+        return s;
+      }
+      const terms = resolveTerms(
+        { priceCents: s.priceCents, durationMinutes: s.durationMinutes },
+        link,
+      );
+      return {
+        ...s,
+        mine: true,
+        effective: {
+          priceCents: terms.priceCents,
+          durationMinutes: terms.durationMinutes,
+        },
+      };
+    });
   }
 
   /**
