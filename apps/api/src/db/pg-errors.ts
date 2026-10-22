@@ -24,3 +24,5 @@ export function pgMessage(error: unknown): string | undefined {
 }
 
 export const UNIQUE_VIOLATION = "23505";
+
+export const FOREIGN_KEY_VIOLATION = "23503";

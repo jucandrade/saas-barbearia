@@ -6,3 +6,5 @@ export * from "./identity/team.js";
 export * from "./openapi.js";
 export * from "./routes.js";
 export * from "./catalog/common.js";
+export * from "./catalog/categories.js";
+export * from "./catalog/services.js";

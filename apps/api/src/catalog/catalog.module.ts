@@ -1,6 +1,10 @@
 import { Module } from "@nestjs/common";
 import { IdentityModule } from "../identity/identity.module.js";
 import { CatalogAuditService } from "./catalog-audit.service.js";
+import { CategoriesController } from "./categories/categories.controller.js";
+import { CategoriesService } from "./categories/categories.service.js";
+import { ServicesController } from "./services/services.controller.js";
+import { ServicesService } from "./services/services.service.js";
 
 /**
  * Bounded context "Cadastros" (catalog of services, principle VI). It reads users only
@@ -9,7 +13,8 @@ import { CatalogAuditService } from "./catalog-audit.service.js";
  */
 @Module({
   imports: [IdentityModule],
-  providers: [CatalogAuditService],
+  controllers: [CategoriesController, ServicesController],
+  providers: [CatalogAuditService, CategoriesService, ServicesService],
   exports: [CatalogAuditService],
 })
 export class CatalogModule {}

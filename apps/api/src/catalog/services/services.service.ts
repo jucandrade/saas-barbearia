@@ -1,0 +1,249 @@
+import { Injectable } from "@nestjs/common";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { normalizeName } from "@barbearia/domain";
+import type {
+  CreateServiceInput,
+  Service,
+  ServiceListQuery,
+  UpdateServiceInput,
+} from "@barbearia/contracts";
+import { pgCode, UNIQUE_VIOLATION } from "../../db/pg-errors.js";
+import { service, serviceCategory } from "../../db/schema/index.js";
+import { TenantDb, type Transaction } from "../../db/tenant-db.js";
+import { Clock } from "../../identity/clock.js";
+import { ApiError } from "../../identity/http/api-error.js";
+import type { AuthenticatedUser } from "../../identity/http/http-types.js";
+import { CatalogAuditService } from "../catalog-audit.service.js";
+
+type ServiceRow = typeof service.$inferSelect;
+
+const notFound = (): ApiError =>
+  new ApiError(404, "NOT_FOUND", "Recurso não encontrado.");
+
+const nameTaken = (): ApiError =>
+  new ApiError(
+    409,
+    "SERVICE_NAME_TAKEN",
+    "Já existe um serviço com esse nome.",
+  );
+
+const invalidCategory = (): ApiError =>
+  new ApiError(400, "INVALID_DATA", "Dados inválidos.", {
+    categoryId: "Escolha uma categoria da sua barbearia.",
+  });
+
+export function toService(row: ServiceRow): Service {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    categoryId: row.categoryId,
+    priceCents: row.priceCents,
+    durationMinutes: row.durationMinutes,
+    status: row.status,
+    mine: false,
+    effective: {
+      priceCents: row.priceCents,
+      durationMinutes: row.durationMinutes,
+    },
+  };
+}
+
+/** The catalog of services: what the barbershop sells, with default price and duration. */
+@Injectable()
+export class ServicesService {
+  constructor(
+    private readonly tenantDb: TenantDb,
+    private readonly audit: CatalogAuditService,
+    private readonly clock: Clock,
+  ) {}
+
+  /** Owners filter by status (default all); barbers only ever see active services (FR-012). */
+  async list(
+    current: AuthenticatedUser,
+    query: ServiceListQuery,
+  ): Promise<Service[]> {
+    const wanted =
+      current.role === "owner" ? (query.status ?? "all") : "active";
+    const rows = await this.tenantDb.transaction(current.tenantId, (tx) =>
+      tx
+        .select({ row: service })
+        .from(service)
+        .innerJoin(
+          serviceCategory,
+          and(
+            eq(serviceCategory.tenantId, service.tenantId),
+            eq(serviceCategory.id, service.categoryId),
+          ),
+        )
+        .where(
+          wanted === "all"
+            ? inArray(service.status, ["active", "deactivated"])
+            : eq(service.status, wanted),
+        )
+        .orderBy(
+          asc(serviceCategory.position),
+          asc(serviceCategory.createdAt),
+          asc(service.nameKey),
+        ),
+    );
+    return rows.map(({ row }) => toService(row));
+  }
+
+  async get(current: AuthenticatedUser, id: string): Promise<Service> {
+    const row = await this.tenantDb.transaction(current.tenantId, (tx) =>
+      this.find(tx, current, id),
+    );
+    return toService(row);
+  }
+
+  async create(
+    current: AuthenticatedUser,
+    input: CreateServiceInput,
+  ): Promise<Service> {
+    try {
+      const row = await this.tenantDb.transaction(
+        current.tenantId,
+        async (tx) => {
+          await this.requireCategory(tx, input.categoryId);
+          const [created] = await tx
+            .insert(service)
+            .values({
+              tenantId: current.tenantId,
+              categoryId: input.categoryId,
+              name: input.name,
+              nameKey: normalizeName(input.name),
+              description: blankToNull(input.description),
+              durationMinutes: input.durationMinutes,
+              priceCents: input.priceCents,
+            })
+            .returning();
+          if (created === undefined) {
+            throw new Error("Service insert returned no row");
+          }
+          await this.audit.record(tx, current.tenantId, {
+            type: "service_created",
+            actorUserId: current.userId,
+            serviceId: created.id,
+            details: {
+              price: { to: created.priceCents },
+              duration: { to: created.durationMinutes },
+            },
+          });
+          return created;
+        },
+      );
+      return toService(row);
+    } catch (error) {
+      if (pgCode(error) === UNIQUE_VIOLATION) {
+        throw nameTaken();
+      }
+      throw error;
+    }
+  }
+
+  async update(
+    current: AuthenticatedUser,
+    id: string,
+    input: UpdateServiceInput,
+  ): Promise<Service> {
+    try {
+      const row = await this.tenantDb.transaction(
+        current.tenantId,
+        async (tx) => {
+          const before = await this.find(tx, current, id);
+          if (input.categoryId !== undefined) {
+            await this.requireCategory(tx, input.categoryId);
+          }
+          const [updated] = await tx
+            .update(service)
+            .set({
+              ...(input.name === undefined
+                ? {}
+                : { name: input.name, nameKey: normalizeName(input.name) }),
+              ...(input.description === undefined
+                ? {}
+                : { description: blankToNull(input.description) }),
+              ...(input.categoryId === undefined
+                ? {}
+                : { categoryId: input.categoryId }),
+              ...(input.priceCents === undefined
+                ? {}
+                : { priceCents: input.priceCents }),
+              ...(input.durationMinutes === undefined
+                ? {}
+                : { durationMinutes: input.durationMinutes }),
+              updatedAt: this.clock.now(),
+            })
+            .where(eq(service.id, id))
+            .returning();
+          if (updated === undefined) {
+            throw notFound();
+          }
+          await this.audit.record(tx, current.tenantId, {
+            type: "service_updated",
+            actorUserId: current.userId,
+            serviceId: id,
+            details: {
+              fields: Object.keys(input),
+              ...(input.priceCents === undefined
+                ? {}
+                : {
+                    price: { from: before.priceCents, to: updated.priceCents },
+                  }),
+              ...(input.durationMinutes === undefined
+                ? {}
+                : {
+                    duration: {
+                      from: before.durationMinutes,
+                      to: updated.durationMinutes,
+                    },
+                  }),
+            },
+          });
+          return updated;
+        },
+      );
+      return toService(row);
+    } catch (error) {
+      if (pgCode(error) === UNIQUE_VIOLATION) {
+        throw nameTaken();
+      }
+      throw error;
+    }
+  }
+
+  /** The service, or 404 — also for a deactivated one when the caller is a barber (FR-006). */
+  private async find(
+    tx: Transaction,
+    current: AuthenticatedUser,
+    id: string,
+  ): Promise<ServiceRow> {
+    const [row] = await tx.select().from(service).where(eq(service.id, id));
+    if (row === undefined) {
+      throw notFound();
+    }
+    if (current.role !== "owner" && row.status !== "active") {
+      throw notFound();
+    }
+    return row;
+  }
+
+  private async requireCategory(
+    tx: Transaction,
+    categoryId: string,
+  ): Promise<void> {
+    const [found] = await tx
+      .select({ id: serviceCategory.id })
+      .from(serviceCategory)
+      .where(eq(serviceCategory.id, categoryId));
+    if (found === undefined) {
+      throw invalidCategory();
+    }
+  }
+}
+
+function blankToNull(text: string | null | undefined): string | null {
+  const trimmed = text?.trim() ?? "";
+  return trimmed === "" ? null : trimmed;
+}
