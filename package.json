@@ -18,7 +18,9 @@
     "infra:up": "docker compose up -d --wait",
     "infra:check": "node --env-file-if-exists=.env scripts/infra-check.mjs",
     "infra:down": "docker compose down",
-    "infra:reset": "docker compose down -v"
+    "infra:reset": "docker compose down -v",
+    "db:migrate": "pnpm --filter @barbearia/api db:migrate",
+    "test:integration": "turbo run test:integration"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

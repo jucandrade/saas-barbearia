@@ -1,0 +1,55 @@
+"use client";
+
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { MeOutput } from "@barbearia/contracts";
+import { call, callWithoutResponse } from "../lib/api";
+
+/** Admin header: shows who is signed in and the sign-out button. */
+export function Header() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [me, setMe] = useState<MeOutput | undefined>();
+
+  // Queries again on every page change: the layout is not remounted after signing in.
+  useEffect(() => {
+    let active = true;
+    call("/auth/me", { schema: MeOutput })
+      .then((response) => {
+        if (active) setMe(response);
+      })
+      .catch(() => {
+        if (active) setMe(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
+
+  async function signOut() {
+    try {
+      await callWithoutResponse("/auth/logout");
+    } finally {
+      setMe(undefined);
+      router.replace("/sign-in");
+    }
+  }
+
+  if (me === undefined) {
+    return null;
+  }
+  return (
+    <header className="header">
+      <span>
+        <strong>{me.barbershop.name}</strong> · {me.user.name}
+      </span>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => void signOut()}
+      >
+        Sair
+      </button>
+    </header>
+  );
+}

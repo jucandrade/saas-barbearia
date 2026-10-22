@@ -5,7 +5,7 @@ import prettier from "eslint-config-prettier";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-/** Restringe uma lista de configs a um conjunto de arquivos. */
+/** Restricts a list of configs to a set of files. */
 const scoped = (files, configs) =>
   configs.map((config) => ({ ...config, files }));
 
@@ -16,7 +16,7 @@ const typedLanguageOptions = {
   },
 };
 
-// Princípio IV da constitution: o domínio não depende de framework, banco, rede ou relógio.
+// Constitution principle IV: the domain depends on no framework, database, network or clock.
 const ioModules = [
   "child_process",
   "dgram",
@@ -65,7 +65,7 @@ export default [
   },
   js.configs.recommended,
 
-  // Pacotes compartilhados e API: regras estritas com informação de tipos.
+  // Shared packages and API: strict rules with type information.
   ...scoped(
     ["packages/**/*.ts", "apps/api/**/*.ts"],
     tseslint.configs.strictTypeChecked,
@@ -75,7 +75,7 @@ export default [
     languageOptions: { ...typedLanguageOptions, globals: globals.node },
   },
   {
-    // Módulos Nest são classes vazias marcadas por decorator.
+    // Nest modules are empty classes marked by a decorator.
     files: ["apps/api/**/*.ts"],
     rules: {
       "@typescript-eslint/no-extraneous-class": [
@@ -94,7 +94,7 @@ export default [
             {
               group: domainForbiddenImports,
               message:
-                "packages/domain deve ser puro: sem framework, banco, rede ou relógio.",
+                "packages/domain must be pure: no framework, database, network or clock.",
             },
           ],
         },
@@ -102,7 +102,7 @@ export default [
     },
   },
 
-  // Apps web (Next.js).
+  // Web apps (Next.js).
   ...scoped(["apps/admin/**/*.{ts,tsx}", "apps/booking/**/*.{ts,tsx}"], next),
   ...scoped(
     ["apps/admin/**/*.{ts,tsx}", "apps/booking/**/*.{ts,tsx}"],
@@ -113,7 +113,7 @@ export default [
     languageOptions: typedLanguageOptions,
   },
 
-  // App mobile (Expo).
+  // Mobile app (Expo).
   ...scoped(["apps/barber/**/*.{ts,tsx}"], expo),
   ...scoped(
     ["apps/barber/**/*.{ts,tsx}"],
@@ -124,7 +124,13 @@ export default [
     languageOptions: typedLanguageOptions,
   },
 
-  // Arquivos JS soltos não passam pelo projeto TypeScript.
+  // Node scripts (.mjs) run in Node: they have its globals.
+  {
+    files: ["**/*.mjs"],
+    languageOptions: { globals: globals.node },
+  },
+
+  // Loose JS files do not go through the TypeScript project.
   {
     files: ["**/*.{js,mjs,cjs}"],
     ...tseslint.configs.disableTypeChecked,

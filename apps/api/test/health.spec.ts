@@ -20,7 +20,7 @@ describe("GET /health", () => {
     await app.close();
   });
 
-  it("responde 200 com status ok", async () => {
+  it("answers 200 with status ok", async () => {
     const server = app.getHttpServer() as Server;
     const response = await request(server).get("/health");
 

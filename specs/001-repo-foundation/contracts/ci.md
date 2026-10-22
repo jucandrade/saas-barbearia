@@ -22,6 +22,8 @@ Arquivo: `.github/workflows/ci.yml`. Decisão de plataforma em [ADR 0001](../../
 | Test | `pnpm test` |
 | Build | `pnpm build` |
 | Infra up | `pnpm infra:up` |
+| Migrate | `pnpm db:migrate` (feature 002) |
+| Integration test | `pnpm test:integration` (feature 002) |
 | Infra check | `pnpm infra:check` |
 | Infra down | `pnpm infra:down` (`if: always()`) |
 

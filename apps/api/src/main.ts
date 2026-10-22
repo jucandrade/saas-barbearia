@@ -1,11 +1,13 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
-
-const DEFAULT_PORT = 3000;
+import { readEnv } from "./config/env.js";
 
 async function bootstrap(): Promise<void> {
+  const env = readEnv();
   const app = await NestFactory.create(AppModule);
-  await app.listen(Number(process.env["PORT"] ?? DEFAULT_PORT));
+  // The admin (another port) calls the API with the session cookie: it needs CORS with credentials.
+  app.enableCors({ origin: env.adminBaseUrl, credentials: true });
+  await app.listen(env.port);
 }
 
 void bootstrap();

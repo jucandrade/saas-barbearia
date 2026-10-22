@@ -1,5 +1,11 @@
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Header } from "./header";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Barbearia",
+};
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -9,7 +15,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <Header />
+        {children}
+      </body>
     </html>
   );
 }
