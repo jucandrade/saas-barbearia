@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MeOutput } from "@barbearia/contracts";
@@ -43,6 +44,12 @@ export function Header() {
       <span>
         <strong>{me.barbershop.name}</strong> · {me.user.name}
       </span>
+      {me.user.role === "owner" && (
+        <nav className="nav" aria-label="Principal">
+          <Link href="/team">Equipe</Link>
+          <Link href="/catalog">Catálogo</Link>
+        </nav>
+      )}
       <button
         type="button"
         className="secondary"
