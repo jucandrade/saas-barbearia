@@ -86,7 +86,10 @@ describe("catalog: deactivate and reactivate services", () => {
     const response = await reactivate(shop.owner.auth, shop.serviceId);
     expect(response.status).toBe(204);
     expect(await listFor(shop.owner.auth)).toEqual(before);
-    expect(await listFor(shop.barber.auth)).toEqual(before);
+    // The executor count is for owners only.
+    expect(await listFor(shop.barber.auth)).toEqual(
+      before.map((s) => ({ ...s, executorCount: undefined })),
+    );
   });
 
   it("repeating either action is idempotent and writes no new event", async () => {

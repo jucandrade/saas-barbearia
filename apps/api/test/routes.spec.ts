@@ -4,6 +4,7 @@ import { RequestMethod } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 import { ROUTES, type Access } from "@barbearia/contracts";
 import { CategoriesController } from "../src/catalog/categories/categories.controller.js";
+import { ExecutorsController } from "../src/catalog/executors/executors.controller.js";
 import { ServicesController } from "../src/catalog/services/services.controller.js";
 import { AuthController } from "../src/identity/auth/auth.controller.js";
 import { PUBLIC, ROLES } from "../src/identity/auth/decorators.js";
@@ -19,6 +20,7 @@ const CONTROLLERS: Controller[] = [
   RecoveryController,
   CategoriesController,
   ServicesController,
+  ExecutorsController,
 ];
 
 interface Found {

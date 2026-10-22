@@ -6,17 +6,25 @@ import {
   CategoriesOutput,
   ServiceCategory,
   ServicesOutput,
+  TeamOutput,
   type Service,
+  type User,
 } from "@barbearia/contracts";
 import { call, callWithoutResponse, ApiResponseError } from "../../lib/api";
 import { messageOf } from "./errors";
+import { ExecutorsPanel } from "./executors-panel";
 import { formatPrice } from "./money";
 import { ServiceForm } from "./service-form";
 
 type Load =
   | { phase: "loading" }
   | { phase: "error"; message: string }
-  | { phase: "ready"; categories: ServiceCategory[]; services: Service[] };
+  | {
+      phase: "ready";
+      categories: ServiceCategory[];
+      services: Service[];
+      people: User[];
+    };
 
 export function Catalog() {
   const router = useRouter();
@@ -27,19 +35,22 @@ export function Catalog() {
   const [busy, setBusy] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [editing, setEditing] = useState<string | undefined>();
+  const [openExecutors, setOpenExecutors] = useState<string | undefined>();
 
   useEffect(() => {
     let active = true;
     Promise.all([
       call("/service-categories", { schema: CategoriesOutput }),
       call("/services", { schema: ServicesOutput }),
+      call("/team", { schema: TeamOutput }),
     ])
-      .then(([categories, services]) => {
+      .then(([categories, services, team]) => {
         if (active) {
           setLoad({
             phase: "ready",
             categories: categories.categories,
             services: services.services,
+            people: team.users.filter((u) => u.status === "active"),
           });
         }
       })
@@ -286,6 +297,9 @@ export function Catalog() {
                           {service.description !== null && (
                             <span className="hint">{service.description}</span>
                           )}
+                          {service.executorCount === 0 && (
+                            <span className="warning">Sem executor</span>
+                          )}
                           <div className="actions">
                             <button
                               type="button"
@@ -307,7 +321,27 @@ export function Catalog() {
                             >
                               Desativar
                             </button>
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => {
+                                setOpenExecutors(
+                                  openExecutors === service.id
+                                    ? undefined
+                                    : service.id,
+                                );
+                              }}
+                            >
+                              Executores
+                            </button>
                           </div>
+                          {openExecutors === service.id && (
+                            <ExecutorsPanel
+                              service={service}
+                              people={load.people}
+                              onChanged={reload}
+                            />
+                          )}
                         </>
                       )}
                     </li>

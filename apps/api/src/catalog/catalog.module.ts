@@ -3,6 +3,8 @@ import { IdentityModule } from "../identity/identity.module.js";
 import { CatalogAuditService } from "./catalog-audit.service.js";
 import { CategoriesController } from "./categories/categories.controller.js";
 import { CategoriesService } from "./categories/categories.service.js";
+import { ExecutorsController } from "./executors/executors.controller.js";
+import { ExecutorsService } from "./executors/executors.service.js";
 import { ServicesController } from "./services/services.controller.js";
 import { ServicesService } from "./services/services.service.js";
 
@@ -13,8 +15,13 @@ import { ServicesService } from "./services/services.service.js";
  */
 @Module({
   imports: [IdentityModule],
-  controllers: [CategoriesController, ServicesController],
-  providers: [CatalogAuditService, CategoriesService, ServicesService],
+  controllers: [CategoriesController, ServicesController, ExecutorsController],
+  providers: [
+    CatalogAuditService,
+    CategoriesService,
+    ServicesService,
+    ExecutorsService,
+  ],
   exports: [CatalogAuditService],
 })
 export class CatalogModule {}

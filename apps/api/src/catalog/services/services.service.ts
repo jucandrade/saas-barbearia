@@ -8,9 +8,14 @@ import type {
   UpdateServiceInput,
 } from "@barbearia/contracts";
 import { pgCode, UNIQUE_VIOLATION } from "../../db/pg-errors.js";
-import { service, serviceCategory } from "../../db/schema/index.js";
+import {
+  service,
+  serviceCategory,
+  serviceExecutor,
+} from "../../db/schema/index.js";
 import { TenantDb, type Transaction } from "../../db/tenant-db.js";
 import { Clock } from "../../identity/clock.js";
+import { UserDirectory } from "../../identity/directory/user-directory.js";
 import { ApiError } from "../../identity/http/api-error.js";
 import type { AuthenticatedUser } from "../../identity/http/http-types.js";
 import { CatalogAuditService } from "../catalog-audit.service.js";
@@ -55,6 +60,7 @@ export class ServicesService {
   constructor(
     private readonly tenantDb: TenantDb,
     private readonly audit: CatalogAuditService,
+    private readonly directory: UserDirectory,
     private readonly clock: Clock,
   ) {}
 
@@ -65,8 +71,8 @@ export class ServicesService {
   ): Promise<Service[]> {
     const wanted =
       current.role === "owner" ? (query.status ?? "all") : "active";
-    const rows = await this.tenantDb.transaction(current.tenantId, (tx) =>
-      tx
+    return this.tenantDb.transaction(current.tenantId, async (tx) => {
+      const rows = await tx
         .select({ row: service })
         .from(service)
         .innerJoin(
@@ -85,16 +91,20 @@ export class ServicesService {
           asc(serviceCategory.position),
           asc(serviceCategory.createdAt),
           asc(service.nameKey),
-        ),
-    );
-    return rows.map(({ row }) => toService(row));
+        );
+      return this.withCounts(
+        tx,
+        current,
+        rows.map(({ row }) => toService(row)),
+      );
+    });
   }
 
   async get(current: AuthenticatedUser, id: string): Promise<Service> {
-    const row = await this.tenantDb.transaction(current.tenantId, (tx) =>
-      this.find(tx, current, id),
-    );
-    return toService(row);
+    return this.tenantDb.transaction(current.tenantId, async (tx) => {
+      const row = await this.find(tx, current, id);
+      return this.withCountsOf(tx, current, row);
+    });
   }
 
   async create(
@@ -102,38 +112,34 @@ export class ServicesService {
     input: CreateServiceInput,
   ): Promise<Service> {
     try {
-      const row = await this.tenantDb.transaction(
-        current.tenantId,
-        async (tx) => {
-          await this.requireCategory(tx, input.categoryId);
-          const [created] = await tx
-            .insert(service)
-            .values({
-              tenantId: current.tenantId,
-              categoryId: input.categoryId,
-              name: input.name,
-              nameKey: normalizeName(input.name),
-              description: blankToNull(input.description),
-              durationMinutes: input.durationMinutes,
-              priceCents: input.priceCents,
-            })
-            .returning();
-          if (created === undefined) {
-            throw new Error("Service insert returned no row");
-          }
-          await this.audit.record(tx, current.tenantId, {
-            type: "service_created",
-            actorUserId: current.userId,
-            serviceId: created.id,
-            details: {
-              price: { to: created.priceCents },
-              duration: { to: created.durationMinutes },
-            },
-          });
-          return created;
-        },
-      );
-      return toService(row);
+      return await this.tenantDb.transaction(current.tenantId, async (tx) => {
+        await this.requireCategory(tx, input.categoryId);
+        const [created] = await tx
+          .insert(service)
+          .values({
+            tenantId: current.tenantId,
+            categoryId: input.categoryId,
+            name: input.name,
+            nameKey: normalizeName(input.name),
+            description: blankToNull(input.description),
+            durationMinutes: input.durationMinutes,
+            priceCents: input.priceCents,
+          })
+          .returning();
+        if (created === undefined) {
+          throw new Error("Service insert returned no row");
+        }
+        await this.audit.record(tx, current.tenantId, {
+          type: "service_created",
+          actorUserId: current.userId,
+          serviceId: created.id,
+          details: {
+            price: { to: created.priceCents },
+            duration: { to: created.durationMinutes },
+          },
+        });
+        return this.withCountsOf(tx, current, created);
+      });
     } catch (error) {
       if (pgCode(error) === UNIQUE_VIOLATION) {
         throw nameTaken();
@@ -148,63 +154,59 @@ export class ServicesService {
     input: UpdateServiceInput,
   ): Promise<Service> {
     try {
-      const row = await this.tenantDb.transaction(
-        current.tenantId,
-        async (tx) => {
-          const before = await this.find(tx, current, id);
-          if (input.categoryId !== undefined) {
-            await this.requireCategory(tx, input.categoryId);
-          }
-          const [updated] = await tx
-            .update(service)
-            .set({
-              ...(input.name === undefined
-                ? {}
-                : { name: input.name, nameKey: normalizeName(input.name) }),
-              ...(input.description === undefined
-                ? {}
-                : { description: blankToNull(input.description) }),
-              ...(input.categoryId === undefined
-                ? {}
-                : { categoryId: input.categoryId }),
-              ...(input.priceCents === undefined
-                ? {}
-                : { priceCents: input.priceCents }),
-              ...(input.durationMinutes === undefined
-                ? {}
-                : { durationMinutes: input.durationMinutes }),
-              updatedAt: this.clock.now(),
-            })
-            .where(eq(service.id, id))
-            .returning();
-          if (updated === undefined) {
-            throw notFound();
-          }
-          await this.audit.record(tx, current.tenantId, {
-            type: "service_updated",
-            actorUserId: current.userId,
-            serviceId: id,
-            details: {
-              fields: Object.keys(input),
-              ...(input.priceCents === undefined
-                ? {}
-                : {
-                    price: { from: before.priceCents, to: updated.priceCents },
-                  }),
-              ...(input.durationMinutes === undefined
-                ? {}
-                : {
-                    duration: {
-                      from: before.durationMinutes,
-                      to: updated.durationMinutes,
-                    },
-                  }),
-            },
-          });
-          return updated;
-        },
-      );
-      return toService(row);
+      return await this.tenantDb.transaction(current.tenantId, async (tx) => {
+        const before = await this.find(tx, current, id);
+        if (input.categoryId !== undefined) {
+          await this.requireCategory(tx, input.categoryId);
+        }
+        const [updated] = await tx
+          .update(service)
+          .set({
+            ...(input.name === undefined
+              ? {}
+              : { name: input.name, nameKey: normalizeName(input.name) }),
+            ...(input.description === undefined
+              ? {}
+              : { description: blankToNull(input.description) }),
+            ...(input.categoryId === undefined
+              ? {}
+              : { categoryId: input.categoryId }),
+            ...(input.priceCents === undefined
+              ? {}
+              : { priceCents: input.priceCents }),
+            ...(input.durationMinutes === undefined
+              ? {}
+              : { durationMinutes: input.durationMinutes }),
+            updatedAt: this.clock.now(),
+          })
+          .where(eq(service.id, id))
+          .returning();
+        if (updated === undefined) {
+          throw notFound();
+        }
+        await this.audit.record(tx, current.tenantId, {
+          type: "service_updated",
+          actorUserId: current.userId,
+          serviceId: id,
+          details: {
+            fields: Object.keys(input),
+            ...(input.priceCents === undefined
+              ? {}
+              : {
+                  price: { from: before.priceCents, to: updated.priceCents },
+                }),
+            ...(input.durationMinutes === undefined
+              ? {}
+              : {
+                  duration: {
+                    from: before.durationMinutes,
+                    to: updated.durationMinutes,
+                  },
+                }),
+          },
+        });
+        return this.withCountsOf(tx, current, updated);
+      });
     } catch (error) {
       if (pgCode(error) === UNIQUE_VIOLATION) {
         throw nameTaken();
@@ -253,6 +255,60 @@ export class ServicesService {
         throw notFound();
       }
     });
+  }
+
+  private async withCountsOf(
+    tx: Transaction,
+    current: AuthenticatedUser,
+    row: ServiceRow,
+  ): Promise<Service> {
+    const [one] = await this.withCounts(tx, current, [toService(row)]);
+    if (one === undefined) {
+      throw new Error("withCounts lost a service");
+    }
+    return one;
+  }
+
+  /**
+   * Owners also get how many active executors each service has, so a service nobody performs
+   * can be flagged (US3). One query for all links plus one for the users' status.
+   */
+  private async withCounts(
+    tx: Transaction,
+    current: AuthenticatedUser,
+    services: Service[],
+  ): Promise<Service[]> {
+    if (current.role !== "owner" || services.length === 0) {
+      return services;
+    }
+    const links = await tx
+      .select({
+        serviceId: serviceExecutor.serviceId,
+        userId: serviceExecutor.userId,
+      })
+      .from(serviceExecutor)
+      .where(
+        inArray(
+          serviceExecutor.serviceId,
+          services.map((s) => s.id),
+        ),
+      );
+    const people = await this.directory.findByIds(tx, [
+      ...new Set(links.map((link) => link.userId)),
+    ]);
+    const active = new Set(
+      people.filter((p) => p.status === "active").map((p) => p.id),
+    );
+    const counts = new Map<string, number>();
+    for (const link of links) {
+      if (active.has(link.userId)) {
+        counts.set(link.serviceId, (counts.get(link.serviceId) ?? 0) + 1);
+      }
+    }
+    return services.map((s) => ({
+      ...s,
+      executorCount: counts.get(s.id) ?? 0,
+    }));
   }
 
   /** The service, or 404 — also for a deactivated one when the caller is a barber (FR-006). */

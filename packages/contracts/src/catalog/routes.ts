@@ -7,6 +7,7 @@ import {
   RenameCategoryInput,
 } from "./categories.js";
 import { ServiceCategory } from "./common.js";
+import { Executor, ExecutorInput, ExecutorsOutput } from "./executors.js";
 import {
   CreateServiceInput,
   Service,
@@ -123,6 +124,39 @@ export const CATALOG_ROUTES: readonly RouteDefinition[] = [
     method: "post",
     path: "/services/{id}/reactivate",
     summary: "Put a deactivated service back in circulation",
+    access: "owner",
+    status: 204,
+    errors: [forbidden, notFound],
+  },
+  {
+    method: "get",
+    path: "/services/{id}/executors",
+    summary: "Who performs a service",
+    access: "session",
+    status: 200,
+    response: ExecutorsOutput,
+    errors: [unauthorized, notFound],
+  },
+  {
+    method: "put",
+    path: "/services/{id}/executors/{userId}",
+    summary:
+      "Link a user to a service, with optional specific price and duration",
+    access: "owner",
+    status: 200,
+    request: ExecutorInput,
+    response: Executor,
+    errors: [
+      forbidden,
+      notFound,
+      { status: 409, code: "EXECUTOR_NOT_ELIGIBLE" },
+      invalidData,
+    ],
+  },
+  {
+    method: "delete",
+    path: "/services/{id}/executors/{userId}",
+    summary: "Unlink a user from a service",
     access: "owner",
     status: 204,
     errors: [forbidden, notFound],
