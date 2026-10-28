@@ -7,6 +7,9 @@ const BASE =
   (process.env.EXPO_PUBLIC_API_URL as string | undefined) ??
   "http://localhost:3000";
 
+/** Base address of the API, also used to build absolute logo urls. */
+export const API_BASE = BASE;
+
 /** Error returned by the API in the `{ code, message, fields? }` format. */
 export class ApiResponseError extends Error {
   constructor(

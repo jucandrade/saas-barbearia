@@ -2,7 +2,7 @@ import { Catalog } from "./catalog";
 
 export default function Page() {
   return (
-    <main>
+    <main className="page-wide">
       <Catalog />
     </main>
   );

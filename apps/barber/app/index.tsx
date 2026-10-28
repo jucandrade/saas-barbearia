@@ -1,15 +1,12 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { MeOutput } from "@barbearia/contracts";
 import { call, callWithoutResponse, ApiResponseError } from "../lib/api";
+import { BrandHeader } from "../lib/brand-header";
+import { useBrand } from "../lib/branding";
 import { eraseToken, readToken } from "../lib/session";
+import { useCommonStyles } from "../lib/theme-styles";
 
 type State =
   | { phase: "loading" }
@@ -18,6 +15,8 @@ type State =
 
 export default function Index() {
   const router = useRouter();
+  const s = useCommonStyles();
+  const { tokens } = useBrand();
   const [state, setState] = useState<State>({ phase: "loading" });
 
   useEffect(() => {
@@ -61,53 +60,63 @@ export default function Index() {
 
   if (state.phase === "loading") {
     return (
-      <View style={styles.screen}>
-        <ActivityIndicator />
+      <View style={s.screen}>
+        <ActivityIndicator color={tokens.primary} />
       </View>
     );
   }
   if (state.phase === "error") {
     return (
-      <View style={styles.screen}>
-        <Text accessibilityRole="alert">{state.message}</Text>
+      <View style={s.screen}>
+        <Text style={s.error} accessibilityRole="alert">
+          {state.message}
+        </Text>
       </View>
     );
   }
   return (
-    <View style={styles.screen}>
-      <Text style={styles.title}>{state.me.barbershop.name}</Text>
-      <Text>Olá, {state.me.user.name}.</Text>
+    <View style={s.screen}>
+      <BrandHeader name={state.me.barbershop.name} />
+      <Text style={s.text}>Olá, {state.me.user.name}.</Text>
       <Pressable
-        style={styles.button}
+        style={s.primaryButton}
         onPress={() => {
           router.push("/catalog");
         }}
         accessibilityRole="button"
       >
-        <Text style={styles.buttonText}>Ver serviços</Text>
+        <Text style={s.primaryButtonText}>Ver serviços</Text>
       </Pressable>
+      {/* Only the owner gets the quick management functions (FR-019, FR-020). */}
+      {state.me.user.role === "owner" && (
+        <>
+          <Pressable
+            style={s.secondaryButton}
+            onPress={() => {
+              router.push("/manage/catalog");
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={s.secondaryButtonText}>Catálogo</Text>
+          </Pressable>
+          <Pressable
+            style={s.secondaryButton}
+            onPress={() => {
+              router.push("/manage/team");
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={s.secondaryButtonText}>Equipe</Text>
+          </Pressable>
+        </>
+      )}
       <Pressable
-        style={styles.button}
+        style={s.secondaryButton}
         onPress={() => void signOut(state.token)}
         accessibilityRole="button"
       >
-        <Text style={styles.buttonText}>Sair</Text>
+        <Text style={s.secondaryButtonText}>Sair</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 24, justifyContent: "center", gap: 8 },
-  title: { fontSize: 24, fontWeight: "700" },
-  button: {
-    minHeight: 44,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: "#cfcfd8",
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: { fontWeight: "700", fontSize: 16 },
-});

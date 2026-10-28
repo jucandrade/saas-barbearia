@@ -1,25 +1,27 @@
 :root {
-  --background: #ffffff;
-  --text: #1b1b1f;
-  --text-muted: #5b5b66;
-  --border: #cfcfd8;
-  --accent: #1f4fd8;
-  --accent-text: #ffffff;
-  --error: #b3261e;
-  --surface: #f4f4f7;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #121214;
-    --text: #f1f1f4;
-    --text-muted: #a9a9b4;
-    --border: #3a3a44;
-    --accent: #7aa2ff;
-    --accent-text: #0b1020;
-    --error: #ff8a80;
-    --surface: #1c1c20;
-  }
+  /* Product default: Noir with gold. The BrandingProvider overwrites these with the identity of the
+     barbershop; the theme alone defines light or dark, the device mode is ignored (FR-026). */
+  --background: #111111;
+  --surface: #1c1c1c;
+  --text: #f2ede4;
+  --text-muted: #a8a196;
+  --border: #3a3a3a;
+  /* Primary color: buttons, links, header and active menu item (FR-009). */
+  --accent: #d4a853;
+  --accent-text: #111111;
+  /* Accent color: badges, selected items and highlights (FR-009). */
+  --highlight: #d4a853;
+  --highlight-text: #111111;
+  /* State colors are fixed by the product, never part of the palette (FR-023). */
+  --error: #ff8a80;
+  --warning: #f2b84b;
+  --success: #6fcf97;
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  --radius-sm: 12px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  color-scheme: dark;
 }
 
 * {
@@ -30,12 +32,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--text);
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
 }
 
@@ -44,6 +41,11 @@ main {
   max-width: 28rem;
   margin: 0 auto;
   padding: 2rem 1rem;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
 }
 
 h1 {
@@ -69,7 +71,7 @@ select {
   margin-bottom: 0.25rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   background: var(--background);
   color: var(--text);
   font-size: 1rem;
@@ -80,7 +82,7 @@ button {
   min-height: 2.75rem;
   margin-top: 0.75rem;
   border: 0;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   background: var(--accent);
   color: var(--accent-text);
   font-size: 1rem;
@@ -118,7 +120,7 @@ button.secondary {
 .card {
   padding: 1rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   background: var(--surface);
 }
 
@@ -128,7 +130,7 @@ button.secondary {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.5rem 1rem;
-  max-width: 28rem;
+  max-width: 80rem;
   margin: 0 auto;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
@@ -169,10 +171,49 @@ h2 {
   font-weight: 600;
 }
 
+/* Active menu item (FR-009): primary color, marked by more than color alone. */
+.nav a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* The logo sits on the surface of the theme, so a transparent logo stays readable. */
+.brand-logo {
+  max-width: 6rem;
+  max-height: 2.5rem;
+  padding: 0.125rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  object-fit: contain;
+}
+
+/* Badges and highlights use the accent color (FR-009). Never placed on an accent-colored fill. */
+.badge {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--highlight);
+  color: var(--highlight-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.boot {
+  min-height: 100vh;
+  background: var(--background);
+}
+
 .warning {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--error);
+  color: var(--warning);
 }
 
 .executors {
@@ -198,4 +239,326 @@ h2 {
 
 .values {
   margin: 0 0 0.75rem 1.75rem;
+}
+
+fieldset.choice-group {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.choice-group legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+.choice input {
+  width: 1.25rem;
+  min-height: 1.25rem;
+  margin: 0;
+}
+
+.swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.hint-inline {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ---- Owner panel, computer first (FR-015): wide page, dense table, side panel ---- */
+
+main.page-wide {
+  max-width: 80rem;
+  padding-top: 1rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.toolbar h1 {
+  margin: 0;
+  margin-right: auto;
+}
+
+.toolbar button {
+  width: auto;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0 1rem;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1rem;
+}
+
+.filter-field,
+.filter-check {
+  display: flex;
+  margin: 0;
+  font-weight: 400;
+}
+
+.filter-field {
+  flex-direction: column;
+  gap: 0.125rem;
+  font-size: 0.875rem;
+}
+
+.filter-field select {
+  width: auto;
+  min-height: 2.25rem;
+  margin: 0;
+}
+
+.filter-check {
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+}
+
+.filter-check input {
+  width: 1.25rem;
+  min-height: 1.25rem;
+  margin: 0;
+}
+
+.filter-field-group {
+  display: flex;
+  gap: 0.5rem 1rem;
+}
+
+.only-narrow {
+  display: none;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.split.has-panel {
+  grid-template-columns: minmax(0, 1fr) 26rem;
+}
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+table.data th,
+table.data td {
+  padding: 0.125rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+table.data th {
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+table.data .right {
+  text-align: right;
+}
+
+table.data tr[data-selected="true"] td {
+  background: var(--surface);
+}
+
+button.link-button {
+  width: auto;
+  min-height: 1.75rem;
+  margin: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+table.data th button.link-button {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+/* Dense rows on the computer (SC-007): about 15 services fit in 1366 x 768. */
+table.data button.link-button {
+  min-height: 1.5rem;
+}
+
+.side-panel {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+}
+
+.side-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.side-panel-head h2 {
+  margin: 0;
+}
+
+.side-panel-head h2:focus {
+  outline: none;
+}
+
+.side-panel-head h2:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+details.categories {
+  margin-bottom: 1rem;
+}
+
+details.categories summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.category-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.category-row .actions {
+  margin: 0 0 0 auto;
+}
+
+/* ---- Narrow screens: stacked cards, panel covers the page, nothing scrolls sideways (FR-018) ---- */
+@media (max-width: 768px) {
+  .split.has-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .only-narrow {
+    display: flex;
+  }
+
+  table.data thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  table.data,
+  table.data tbody,
+  table.data tr,
+  table.data td {
+    display: block;
+  }
+
+  table.data tr {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  table.data td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    border: 0;
+    text-align: right;
+  }
+
+  /* Touch targets on the phone. */
+  table.data button.link-button {
+    min-height: 2.75rem;
+  }
+
+  table.data td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: left;
+  }
+
+  table.data tr[data-selected="true"] td {
+    background: none;
+  }
+
+  .side-panel {
+    position: fixed;
+    z-index: 20;
+    inset: 0;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+/* Native radios and checkboxes follow the primary color of the theme. */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--accent);
 }

@@ -3,7 +3,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -11,9 +10,13 @@ import {
 import { SessionOutput, type LoginInput } from "@barbearia/contracts";
 import { call, ApiResponseError } from "../lib/api";
 import { saveToken } from "../lib/session";
+import { useBrand } from "../lib/branding";
+import { useCommonStyles } from "../lib/theme-styles";
 
 export default function SignIn() {
   const router = useRouter();
+  const s = useCommonStyles();
+  const { tokens } = useBrand();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
@@ -45,11 +48,12 @@ export default function SignIn() {
   }
 
   return (
-    <View style={styles.screen}>
-      <Text style={styles.title}>Entrar</Text>
-      <Text style={styles.label}>E-mail</Text>
+    <View style={s.screen}>
+      <Text style={s.title}>Entrar</Text>
+      <Text style={s.label}>E-mail</Text>
       <TextInput
-        style={styles.field}
+        style={s.field}
+        placeholderTextColor={tokens.textMuted}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -57,9 +61,10 @@ export default function SignIn() {
         keyboardType="email-address"
         accessibilityLabel="E-mail"
       />
-      <Text style={styles.label}>Senha</Text>
+      <Text style={s.label}>Senha</Text>
       <TextInput
-        style={styles.field}
+        style={s.field}
+        placeholderTextColor={tokens.textMuted}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -68,47 +73,22 @@ export default function SignIn() {
         accessibilityLabel="Senha"
       />
       {error !== undefined && (
-        <Text style={styles.error} accessibilityRole="alert">
+        <Text style={s.error} accessibilityRole="alert">
           {error}
         </Text>
       )}
       <Pressable
-        style={[styles.button, submitting && styles.buttonDisabled]}
+        style={[s.primaryButton, submitting && s.disabled]}
         disabled={submitting || email.length === 0 || password.length === 0}
         onPress={() => void signIn()}
         accessibilityRole="button"
       >
         {submitting ? (
-          <ActivityIndicator />
+          <ActivityIndicator color={tokens.onPrimary} />
         ) : (
-          <Text style={styles.buttonText}>Entrar</Text>
+          <Text style={s.primaryButtonText}>Entrar</Text>
         )}
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 24, justifyContent: "center", gap: 8 },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 8 },
-  label: { fontWeight: "600" },
-  field: {
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: "#cfcfd8",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-  },
-  error: { color: "#b3261e" },
-  button: {
-    minHeight: 44,
-    marginTop: 12,
-    borderRadius: 8,
-    backgroundColor: "#1f4fd8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#ffffff", fontWeight: "700", fontSize: 16 },
-});

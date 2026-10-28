@@ -2,7 +2,7 @@ import { Team } from "./team";
 
 export default function Page() {
   return (
-    <main>
+    <main className="page-wide">
       <Team />
     </main>
   );

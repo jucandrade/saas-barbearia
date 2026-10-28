@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import {
   Service,
   type CreateServiceInput,
@@ -31,6 +31,7 @@ export function ServiceForm({ categories, service, onSaved, onCancel }: Props) {
   const [duration, setDuration] = useState(
     service === undefined ? "30" : String(service.durationMinutes),
   );
+  const nameField = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -67,6 +68,8 @@ export function ServiceForm({ categories, service, onSaved, onCancel }: Props) {
         setName("");
         setDescription("");
         setPrice("");
+        // Several services in a row, keyboard only: back to the first field (FR-017).
+        nameField.current?.focus();
       }
       onSaved(
         service === undefined ? "Serviço cadastrado." : "Serviço atualizado.",
@@ -99,6 +102,7 @@ export function ServiceForm({ categories, service, onSaved, onCancel }: Props) {
       <label htmlFor={`${idPrefix}-name`}>Nome</label>
       <input
         id={`${idPrefix}-name`}
+        ref={nameField}
         value={name}
         maxLength={80}
         onChange={(e) => {
