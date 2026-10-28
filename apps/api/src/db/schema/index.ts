@@ -8,3 +8,6 @@ export * from "./service-category.js";
 export * from "./service.js";
 export * from "./service-executor.js";
 export * from "./catalog-event.js";
+export * from "./barbershop-branding.js";
+export * from "./barbershop-logo.js";
+export * from "./branding-event.js";

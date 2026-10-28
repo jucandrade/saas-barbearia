@@ -59,6 +59,9 @@ async function prepare(): Promise<() => Promise<void>> {
     await admin.query(
       "GRANT app_auth TO owner_test WITH ADMIN OPTION, SET TRUE, INHERIT FALSE",
     );
+    await admin.query(
+      "GRANT app_public TO owner_test WITH ADMIN OPTION, SET TRUE, INHERIT FALSE",
+    );
     await admin.query(`CREATE DATABASE "${databaseName}" OWNER owner_test`);
   } finally {
     await admin.end();

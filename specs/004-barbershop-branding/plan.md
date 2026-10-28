@@ -61,6 +61,28 @@ Constitution **1.2.0**.
 - **Desativação de barbearia**: ainda não existe; quando existir, a função pública deve atender FR-030 ([R3](research.md#r3-leitura-pública-sem-login-função-dedicada)).
 - **Página do link e app do cliente**: pertencem à feature de agendamento (ADR 0003); esta feature só entrega a leitura pública e os tokens.
 
+**Reavaliação com os arquivos reais (T074, após a implementação)**: aprovado, sem violações novas.
+
+| Princípio | Verificado nos arquivos |
+|---|---|
+| I | `0005_branding.sql` aplica `FORCE ROW LEVEL SECURITY` nas três tabelas novas (`barbershop_branding`, `barbershop_logos`, `branding_events`) e religa o `FORCE` de `barbershops` depois do preenchimento do slug. `branding-rls.spec.ts` prova que sem tenant nada é lido nem escrito; que `app_runtime` não lê nenhuma tabela como anônimo; que `public_get_identity` e `public_get_logo` devolvem exatamente as colunas documentadas, zero linhas para slug inexistente, são `SECURITY DEFINER` do papel `app_public` (sem login, sem `BYPASSRLS`) e não são executáveis por `PUBLIC`. `branding-leak.spec.ts` e `branding-public.spec.ts` cobrem vazamento autenticado e anônimo. |
+| IV | `packages/domain` segue sem `dependencies`; `validateDisplayName`, `slugify`, `isValidSlug`, `detectImage`, `validateLogo`, `filterServices` e `sortServices` são funções puras com testes escritos antes (exceção registrada abaixo). `packages/ui` depende só do domínio. |
+| V | Schemas Zod em `packages/contracts/src/branding/`; `BRANDING_ROUTES` entra em `ROUTES`; o OpenAPI tem as 7 operações novas, com corpo e resposta binários documentados; `routes.spec.ts` cobre os três controladores; há teste de contrato para cada um dos 7 endpoints (`branding`, `branding-reset` e `branding-public`). |
+| VI | O módulo de identidade visual não importa a tabela `barbershops`: lê e renomeia só por `BarbershopDirectory`. As funções públicas leem `barbershops` no nível do banco, por papel dedicado (justificado em Complexity Tracking). |
+| IX | `branding-audit-full.spec.ts` prova que eventos e logs não trazem o texto do nome, nem o logo, nem dados pessoais, e que alterações novas nunca reescrevem eventos anteriores. |
+| X | Sem armazenamento de objetos, sem biblioteca de imagem, sem biblioteca de CSS; as únicas dependências novas são as cinco do `apps/barber`. |
+
+**O que a implementação ensinou** (já coberto por teste ou registrado):
+
+1. **Preenchimento do slug sob RLS forçada**: o dono da tabela também é filtrado pelo `FORCE`, então a migration desliga o `FORCE` de `barbershops` só para o `UPDATE` de preenchimento e o religa na mesma transação. A lógica foi conferida com nomes com acento, apóstrofo, repetidos e só símbolos.
+2. **`public_slug` com padrão no banco**: a coluna ganhou um `DEFAULT` (`barbearia-` + 8 hex) como rede de segurança, para nenhuma inserção nascer sem slug e para os testes e comandos existentes continuarem valendo; o provisionamento sempre grava o slug derivado do nome (com `-2`, `-3`... em colisão, inclusive simultânea).
+3. **`BarbershopDirectory` recebe o `tenantId` explícito** (`getProfile(tx, tenantId)` e `rename(tx, tenantId, name)`), além do contexto de RLS, para um id errado falhar fechado em vez de depender só da RLS.
+4. **Corpo cru do logo**: `configureApp` usa `useBodyParser("raw")` com teto de 1 MB, acima dos 512 KB aceitos, para um logo um pouco grande ser recusado pela aplicação com `LOGO_TOO_LARGE`. O erro do parser para corpo acima do teto não é uma `HttpException`; o `ErrorFilter` o reconhece e responde `413 LOGO_TOO_LARGE` no formato da API.
+5. **Limitador por rota**: o `ThrottlerGuard` conta por rota, então `identity` e `logo` têm contadores próprios; `ThrottlerModule` passou a ser exportado pela `IdentityModule`.
+6. **Tom claro do Ouro**: o âmbar do mockup do Dia reprovava o contraste (4,12:1); a paleta usa `#946006`.
+7. **Verificação no navegador**: painel e app foram exercitados em Chrome sem interface (tema Couro e Dia, entrar com a aparência padrão, envio e remoção de logo, restaurar padrão, cadastro só com teclado, foco do painel lateral, 360 px sem rolagem horizontal). Com 1366 × 768 de janela, 16 linhas do Catálogo ficam visíveis; em um navegador comum, com barras, cabem menos. O app do barbeiro só foi verificado por tipos, lint e `expo export`, não em aparelho.
+8. **Desvio de processo**: o serviço de auditoria, `isValidSlug` e o teste de auditoria foram escritos junto com os testes, sem rodar o teste falhando antes.
+
 ## Project Structure
 
 ### Documentation (this feature)

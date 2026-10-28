@@ -1,5 +1,8 @@
 import {
   barbershop,
+  barbershopBranding,
+  barbershopLogo,
+  brandingEvent,
   catalogEvent,
   securityEvent,
   service,
@@ -10,7 +13,8 @@ import {
   unit,
   user,
 } from "../../../src/db/schema/index.js";
-import { normalizeName } from "@barbearia/domain";
+import { createHash } from "node:crypto";
+import { normalizeName, slugify } from "@barbearia/domain";
 import {
   generateToken,
   hashToken,
@@ -20,17 +24,27 @@ import { withTenantAdmin, adminConnection, newUuid } from "./db.js";
 export interface BarbershopCreated {
   barbershopId: string;
   unitId: string;
+  /** Public link identifier, unique per call. */
+  slug: string;
+}
+
+/** A unique, valid public slug for a barbershop name (the suffix avoids collisions between tests). */
+export function slugFor(name: string): string {
+  return `${slugify(name).slice(0, 30)}-${newUuid().slice(0, 8)}`;
 }
 
 /** Creates a barbershop and its initial unit (the UUID is born in the application, before the INSERTs). */
 export async function createBarbershop(
   name = "Barbearia Teste",
   timezone = "America/Sao_Paulo",
+  slug = slugFor(name),
 ): Promise<BarbershopCreated> {
   const barbershopId = newUuid();
   const unitId = newUuid();
   await withTenantAdmin(barbershopId, async (tx) => {
-    await tx.insert(barbershop).values({ id: barbershopId, name });
+    await tx
+      .insert(barbershop)
+      .values({ id: barbershopId, name, publicSlug: slug });
     await tx.insert(unit).values({
       id: unitId,
       tenantId: barbershopId,
@@ -38,7 +52,7 @@ export async function createBarbershop(
       timezone: timezone,
     });
   });
-  return { barbershopId, unitId };
+  return { barbershopId, unitId, slug };
 }
 
 export interface UserToCreate {
@@ -218,6 +232,70 @@ export async function createCatalogEventInDatabase(
     await tx.insert(catalogEvent).values({
       tenantId,
       type: "category_created",
+      actorUserId,
+    });
+  });
+}
+
+export interface BrandingToCreate {
+  tenantId: string;
+  theme?: "noir" | "day" | "leather";
+  primaryTone?: (typeof barbershopBranding.$inferInsert)["primaryTone"];
+  accentTone?: (typeof barbershopBranding.$inferInsert)["accentTone"];
+  logoVersion?: string | null;
+}
+
+/** Saves a customized identity straight in the database. */
+export async function createBranding(data: BrandingToCreate): Promise<void> {
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(barbershopBranding).values({
+      tenantId: data.tenantId,
+      theme: data.theme ?? "day",
+      primaryTone: data.primaryTone ?? "blue",
+      accentTone: data.accentTone ?? "gold",
+      logoVersion: data.logoVersion ?? null,
+    });
+  });
+}
+
+export interface LogoToCreate {
+  tenantId: string;
+  /** Raw bytes; the database only checks the size, the content is validated by the application. */
+  content?: Buffer;
+  contentType?: "image/png" | "image/jpeg" | "image/webp";
+  width?: number;
+  height?: number;
+}
+
+/** Stores a logo straight in the database and returns its version. */
+export async function createLogo(data: LogoToCreate): Promise<string> {
+  const content = data.content ?? Buffer.from("logo-bytes");
+  const version = createHash("sha256")
+    .update(content)
+    .digest("hex")
+    .slice(0, 16);
+  await withTenantAdmin(data.tenantId, async (tx) => {
+    await tx.insert(barbershopLogo).values({
+      tenantId: data.tenantId,
+      content,
+      contentType: data.contentType ?? "image/png",
+      width: data.width ?? 200,
+      height: data.height ?? 200,
+      version,
+    });
+  });
+  return version;
+}
+
+/** Creates a branding event straight in the database, for the isolation tests. */
+export async function createBrandingEventInDatabase(
+  tenantId: string,
+  actorUserId: string,
+): Promise<void> {
+  await withTenantAdmin(tenantId, async (tx) => {
+    await tx.insert(brandingEvent).values({
+      tenantId,
+      type: "branding_updated",
       actorUserId,
     });
   });

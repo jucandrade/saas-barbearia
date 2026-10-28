@@ -257,3 +257,73 @@ describe("provision-barbershop", () => {
     });
   });
 });
+
+describe("provision-barbershop: public link slug", () => {
+  afterAll(closeConnections);
+
+  async function slugOf(barbershopId: string): Promise<string | undefined> {
+    const rows = await withTenantAdmin(barbershopId, (tx) =>
+      tx.select().from(barbershop),
+    );
+    return rows[0]?.publicSlug;
+  }
+
+  it("is born from the barbershop name", async () => {
+    const f = createPlatformTools();
+    const r = await f.provisioning.provision({
+      ...data("slug-1"),
+      name: "Barbearia do São João",
+    });
+    expect(await slugOf(r.barbershopId)).toBe("barbearia-do-sao-joao");
+  });
+
+  it("gets a numeric suffix when the name was already taken", async () => {
+    const f = createPlatformTools();
+    const first = await f.provisioning.provision({
+      ...data("slug-2a"),
+      name: "Corte Certo",
+    });
+    const second = await f.provisioning.provision({
+      ...data("slug-2b"),
+      name: "Corte Certo",
+    });
+    const third = await f.provisioning.provision({
+      ...data("slug-2c"),
+      name: "Corte Certo",
+    });
+    expect(await slugOf(first.barbershopId)).toBe("corte-certo");
+    expect(await slugOf(second.barbershopId)).toBe("corte-certo-2");
+    expect(await slugOf(third.barbershopId)).toBe("corte-certo-3");
+  });
+
+  it("keeps slugs distinct when the same name is provisioned at the same time", async () => {
+    const f = createPlatformTools();
+    const results = await Promise.all(
+      ["a", "b", "c", "d"].map((letter) =>
+        f.provisioning.provision({
+          ...data(`slug-3${letter}`),
+          name: "Navalha Dupla",
+        }),
+      ),
+    );
+    const slugs = await Promise.all(results.map((r) => slugOf(r.barbershopId)));
+    expect(new Set(slugs).size).toBe(4);
+    for (const slug of slugs) {
+      expect(slug).toMatch(/^navalha-dupla(-\d+)?$/);
+    }
+  });
+
+  it("still reports an unavailable e-mail as such, not as a slug collision", async () => {
+    const f = createPlatformTools();
+    await f.provisioning.provision({
+      ...data("slug-4"),
+      name: "Mesmo Email Um",
+    });
+    await expect(
+      f.provisioning.provision({
+        ...data("slug-4"),
+        name: "Mesmo Email Dois",
+      }),
+    ).rejects.toBeInstanceOf(PlatformError);
+  });
+});

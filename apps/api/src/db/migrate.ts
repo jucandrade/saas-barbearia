@@ -45,9 +45,11 @@ async function adjustAttributes(
 /**
  * Ensures the database roles, idempotently:
  * - `app_runtime`: used by the API; no superuser and no `BYPASSRLS` (R2);
- * - `app_auth`: no login; owner of the authentication functions (R3).
- * Lets the migrator assume `app_auth` (without inheriting its privileges),
- * so it can hand the functions over to it.
+ * - `app_auth`: no login; owner of the authentication functions (R3);
+ * - `app_public`: no login; owner of the functions that read the public identity of a
+ *   barbershop without a session (feature 004, R3).
+ * Lets the migrator assume each of them (without inheriting their privileges),
+ * so it can hand the functions over to them.
  */
 export async function ensureRoles(
   client: pg.Client,
@@ -62,6 +64,9 @@ export async function ensureRoles(
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_auth') THEN
         CREATE ROLE app_auth NOLOGIN;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_public') THEN
+        CREATE ROLE app_public NOLOGIN;
+      END IF;
     END
     $$
   `);
@@ -70,10 +75,14 @@ export async function ensureRoles(
   );
   await adjustAttributes(client, "app_runtime", true);
   await adjustAttributes(client, "app_auth", false);
+  await adjustAttributes(client, "app_public", false);
   // INHERIT FALSE is essential: `TO app_auth` policies also apply to anyone who inherits the role,
   // and inheriting it would give the migrator tenant-less read access, defeating RLS.
   await client.query(
     "GRANT app_auth TO CURRENT_USER WITH SET TRUE, INHERIT FALSE",
+  );
+  await client.query(
+    "GRANT app_public TO CURRENT_USER WITH SET TRUE, INHERIT FALSE",
   );
 }
 

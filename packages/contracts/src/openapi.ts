@@ -9,6 +9,18 @@ function jsonSchema(schema: z.ZodType): JsonSchema {
   return z.toJSONSchema(schema, { io: "input", unrepresentable: "any" });
 }
 
+/** Binary content (images): one entry per accepted media type. */
+function binaryOf(contentTypes: readonly string[]): JsonSchema {
+  return {
+    content: Object.fromEntries(
+      contentTypes.map((type) => [
+        type,
+        { schema: { type: "string", format: "binary" } },
+      ]),
+    ),
+  };
+}
+
 function bodyOf(schema: z.ZodType): JsonSchema {
   return { content: { "application/json": { schema: jsonSchema(schema) } } };
 }
@@ -29,6 +41,9 @@ export function buildOpenApi(
       [String(route.status)]: {
         description: "Success",
         ...(route.response === undefined ? {} : bodyOf(route.response)),
+        ...(route.responseBinary === undefined
+          ? {}
+          : binaryOf(route.responseBinary.contentTypes)),
       },
     };
     const errors = [...route.errors];
@@ -53,6 +68,14 @@ export function buildOpenApi(
       ...(route.request === undefined
         ? {}
         : { requestBody: { required: true, ...bodyOf(route.request) } }),
+      ...(route.body === undefined
+        ? {}
+        : {
+            requestBody: {
+              required: true,
+              ...binaryOf(route.body.contentTypes),
+            },
+          }),
       responses,
     };
   }

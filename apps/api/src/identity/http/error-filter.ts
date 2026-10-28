@@ -13,6 +13,8 @@ const MESSAGES: Record<number, [string, string]> = {
   401: ["INVALID_SESSION", "Sessão inválida ou expirada. Entre novamente."],
   403: ["NO_PERMISSION", "Você não tem permissão para esta ação."],
   404: ["NOT_FOUND", "Recurso não encontrado."],
+  // Only the logo upload has a body ceiling, so this is its "too large" answer.
+  413: ["LOGO_TOO_LARGE", "O logo deve ter no máximo 512 KB."],
   429: [
     "TOO_MANY_REQUESTS",
     "Muitas requisições. Tente novamente em instantes.",
@@ -25,6 +27,16 @@ const MESSAGES: Record<number, [string, string]> = {
  * stuffs it with parameters, such as e-mails), the body or the URL (which may
  * carry a token).
  */
+/** The body-parser error for a body above its limit (not a Nest `HttpException`). */
+function isBodyTooLarge(exception: unknown): boolean {
+  return (
+    exception !== null &&
+    typeof exception === "object" &&
+    "type" in exception &&
+    exception.type === "entity.too.large"
+  );
+}
+
 @Catch()
 export class ErrorFilter implements ExceptionFilter {
   private readonly logger = new Logger("Errors");
@@ -55,6 +67,10 @@ export class ErrorFilter implements ExceptionFilter {
       if (typeof response === "object") {
         body.message = (response as { message: string }).message;
       }
+    } else if (isBodyTooLarge(exception)) {
+      status = 413;
+      const [code, message] = MESSAGES[413] ?? ["HTTP_ERROR", ""];
+      body = { code, message };
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       const [code, message] = MESSAGES[status] ?? [

@@ -1,7 +1,9 @@
 import type { INestApplication, LoggerService, Type } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AppModule } from "../../../src/app.module.js";
+import { configureApp } from "../../../src/app-setup.js";
 import { ENV } from "../../../src/config/config.module.js";
 import { readEnv, type Env } from "../../../src/config/env.js";
 import { TenantDb } from "../../../src/db/tenant-db.js";
@@ -101,7 +103,8 @@ export async function createApp(options: AppOptions = {}): Promise<TestApp> {
     .useValue(email)
     .compile();
 
-  const app = moduleRef.createNestApplication();
+  const app = moduleRef.createNestApplication<NestExpressApplication>();
+  configureApp(app, env);
   if (options.logger !== undefined) {
     app.useLogger(options.logger);
   }
@@ -112,7 +115,7 @@ export async function createApp(options: AppOptions = {}): Promise<TestApp> {
     clock,
     email,
     env,
-    http: () => request(app.getHttpServer() as Parameters<typeof request>[0]),
+    http: () => request(app.getHttpServer()),
     openSession: (user) =>
       app
         .get(TenantDb)

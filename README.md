@@ -52,15 +52,16 @@ A CI roda exatamente estes comandos: `format:check`, `lint`, `typecheck` e `test
 
 ## Estrutura
 
-| Espaço               | Para que serve                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------- |
-| `apps/api`           | API em NestJS: identidade e acesso, catálogo de serviços, banco com RLS, comandos     |
-| `apps/admin`         | Painel administrativo em Next.js: entrar, convite, recuperar senha, Equipe e Catálogo |
-| `apps/booking`       | Link público de agendamento em Next.js, renderizado no servidor (página em branco)    |
-| `apps/barber`        | App do barbeiro em React Native com Expo: entrar, sair e ver os serviços              |
-| `packages/domain`    | Regras de negócio como funções puras, sem framework, banco, rede ou relógio           |
-| `packages/contracts` | Contratos (schemas Zod) compartilhados entre API e clientes, e o gerador do OpenAPI   |
-| `packages/ui`        | Componentes de interface compartilhados (vazio)                                       |
+| Espaço               | Para que serve                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `apps/api`           | API em NestJS: identidade e acesso, catálogo de serviços, banco com RLS, comandos       |
+| `apps/admin`         | Painel administrativo em Next.js: entrar, convite, Equipe, Catálogo e Identidade visual |
+| `apps/booking`       | Link público de agendamento em Next.js, renderizado no servidor (página em branco)      |
+| `apps/barber`        | App do barbeiro em React Native com Expo: serviços e, para o dono, gestão rápida        |
+| `packages/domain`    | Regras de negócio como funções puras, sem framework, banco, rede ou relógio             |
+| `packages/contracts` | Contratos (schemas Zod) compartilhados entre API e clientes, e o gerador do OpenAPI     |
+| `packages/ui`        | Tokens visuais: os 3 temas, a paleta de 10 tons e o cálculo de cores (sem React)        |
+| `packages/ui`        | Componentes de interface compartilhados (vazio)                                         |
 
 ## Configuração local
 
@@ -105,6 +106,19 @@ O dono mantém o catálogo da barbearia em **Catálogo** (`/catalog` no admin): 
 - **Para a agenda e a comanda**: `GET /services/{id}/terms?userId=` e `CatalogFacade.resolveTerms` devolvem o preço e a duração que valem para um executor.
 
 Os 15 endpoints estão no documento OpenAPI (comando acima). Não há variável de ambiente nova nesta feature.
+
+## Identidade visual
+
+O dono personaliza a barbearia em **Identidade visual** (`/branding` no admin): **tema** (Noir, Dia ou Couro), nome de exibição, logo e duas cores (principal e de destaque) de uma paleta fechada de 10 tons. Vale para toda a barbearia: dono, barbeiros e clientes, no painel e nos apps. O tema muda só o visual, não a organização das telas, e ele define se a tela é clara ou escura (o modo do aparelho é ignorado). Só o dono altera; preferência por usuário não existe.
+
+- **Cores**: a principal vai em botões, links, cabeçalho e item de menu ativo; a de destaque em selos, itens selecionados e realces. Erro, aviso e sucesso são cores fixas do produto, nunca da paleta. Os tons e os temas ficam em [packages/ui](packages/ui/src/branding), e um teste de 3 temas × 10 tons garante contraste de pelo menos 4,5:1, então qualquer combinação é legível.
+- **Logo**: PNG, JPEG ou WebP, até 512 KB, lado menor de pelo menos 64 e maior de no máximo 2.000 pixels. A API confere pelos bytes (não pelo nome nem pelo tipo declarado) e guarda em tabela própria. SVG e GIF não são aceitos.
+- **Leitura pública, sem login**: `GET /public/barbershops/{slug}/identity` e `.../logo` devolvem só tema, nome, logo e cores de uma barbearia, a partir do endereço do link (`public_slug`). Nenhuma tabela fica aberta a visitante: o acesso é por duas funções do banco (`public_get_identity` e `public_get_logo`) de um papel sem login (`app_public`). Endereço inexistente devolve a aparência padrão, sem diferença de uma barbearia que nunca personalizou. A página do link e o app do cliente são da feature de agendamento (ver [ADR 0003](docs/adr/0003-app-do-cliente-e-marca-propria.md)).
+- **Padrão do produto**: Noir com ouro. A tela de entrar, o convite e a recuperação de senha sempre usam o padrão. "Restaurar padrão" volta tema e cores (sem mexer no nome nem no logo); o logo se remove à parte.
+- **Auditoria**: toda alteração grava um evento imutável em `branding_events` (autor, horário e os valores fechados de tema e cores), sem o texto do nome nem o logo.
+- **Painel para computador**: Catálogo e Equipe são tabelas com ordenação e filtros e a edição abre em um painel ao lado; no celular viram cartões, sem rolagem lateral. No app, o dono tem só funções rápidas: ver catálogo e equipe, desativar e reativar um serviço, desativar um membro e reenviar um convite.
+
+Os 7 endpoints novos estão no documento OpenAPI. Não há variável de ambiente nova. O papel `app_public` é criado junto com os outros por `db:migrate`.
 
 Em produção, os papéis do banco devem ser criados antes (ver [migrate.ts](apps/api/src/db/migrate.ts)) e `SESSION_COOKIE_SECURE=true`.
 

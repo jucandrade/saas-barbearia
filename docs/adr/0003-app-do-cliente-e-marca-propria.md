@@ -19,7 +19,7 @@ O produto também quer, mais adiante, atender outras barbearias em duas modalida
 2. A barbearia é definida por **configuração, nunca por código**:
    - no app com marca própria, o identificador da barbearia vem embutido na build (variante do Expo, por `APP_VARIANT` em `app.config.js` e um perfil de build por barbearia);
    - no app único, o identificador vem do link ou do QR da barbearia.
-   Nome, logo, cores e tema vêm sempre do servidor, pela identidade da feature 004.
+     Nome, logo, cores e tema vêm sempre do servidor, pela identidade da feature 004.
 3. A **primeira variante** é a da barbearia piloto, com o nome **Barbershop Tribo's**. O app único (modalidade 1) é construído depois, como a mesma base sem a barbearia embutida.
 4. O **link público** da barbearia continua existindo como porta de entrada e alternativa: abre o app quando instalado e, caso contrário, mostra a página com a identidade da barbearia (leitura pública da 004) e leva à loja.
 5. A barbearia piloto **não perde o que tem hoje**: o novo app deve ser publicado como atualização do app atual, mantendo o mesmo identificador e a mesma conta de publicação, sempre que for possível.
