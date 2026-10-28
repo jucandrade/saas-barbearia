@@ -28,7 +28,7 @@ Desenho: o módulo `BrandingModule` (contexto Identidade e Tenancy) tem três ta
 
 **Constraints**: RLS com falha fechada nas três tabelas; leitura anônima só por função dedicada, campos mínimos, sem tabela aberta (constitution, Princípio I); nenhum dado pessoal nem conteúdo do logo nos eventos de auditoria (Princípio IX); mensagens ao usuário em português; `pnpm test` da raiz continua sem exigir banco; comandos iguais em PowerShell e bash; sem rolagem horizontal em 360 px (SC-008); organização das telas igual nos três temas (FR-025).
 
-**Scale/Scope**: 3 tabelas, 1 coluna nova, 2 funções públicas, 8 endpoints (6 autenticados e 2 públicos), 4 tipos de evento de auditoria, 3 temas, 10 tons, 1 tela de identidade visual, 2 telas de gestão redesenhadas (Catálogo e Equipe), e 2 áreas novas no app do dono.
+**Scale/Scope**: 3 tabelas, 1 coluna nova, 2 funções públicas, 7 endpoints (5 autenticados e 2 públicos), 4 tipos de evento de auditoria, 3 temas, 10 tons, 1 tela de identidade visual, 2 telas de gestão redesenhadas (Catálogo e Equipe), e 2 áreas novas no app do dono.
 
 ## Constitution Check
 
@@ -72,7 +72,7 @@ specs/004-barbershop-branding/
 ├── data-model.md        # Fase 1: tabelas, RLS, funções públicas, regras
 ├── quickstart.md        # Fase 1: roteiro de validação ponta a ponta
 ├── contracts/
-│   └── api.md           # Contrato dos 8 endpoints
+│   └── api.md           # Contrato dos 7 endpoints
 ├── checklists/
 │   └── requirements.md  # Qualidade da spec
 └── tasks.md             # Fase 2 (/speckit-tasks)

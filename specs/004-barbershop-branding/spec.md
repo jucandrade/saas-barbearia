@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Identidade visual da barbearia e painel do dono pensado para computador. O dono personaliza o nome de exibição, o logo (PNG, JPEG ou WebP com limite de tamanho) e as cores, escolhendo uma cor principal e uma cor de destaque em uma paleta pronta e fechada (cerca de 8 a 12 tons já testados para boa leitura em modo claro e escuro). O nome, o logo e as cores aparecem no painel de gestão e no app. O painel de gestão do dono passa a ser desenhado primeiro para computador (tabelas, painel lateral de edição, largura ampla), mas continua usável no celular. No app, o dono tem só algumas funções rápidas: ver o catálogo e a equipe, desativar e reativar um serviço, desativar um membro da equipe e reenviar convite; cadastros, preços, executores, identidade visual e demais configurações ficam só no computador. Apenas o dono altera a identidade visual, isolada por barbearia."
+**Input**: User description: "Identidade visual da barbearia e painel do dono pensado para computador. O dono personaliza o nome de exibição, o logo (PNG, JPEG ou WebP com limite de tamanho) e as cores, escolhendo uma cor principal e uma cor de destaque em uma paleta pronta e fechada (cerca de 8 a 12 tons já testados para boa leitura em modo claro e escuro). O nome, o logo e as cores aparecem no painel de gestão e no app. O painel de gestão do dono passa a ser desenhado primeiro para computador (tabelas, painel lateral de edição, largura ampla), mas continua usável no celular. No app, o dono tem só algumas funções rápidas: ver o catálogo e a equipe, desativar e reativar um serviço, desativar um membro da equipe e reenviar convite; cadastros, preços, executores, identidade visual e demais configurações ficam só no computador. Apenas o dono altera a identidade visual, isolada por barbearia. (Atualização de 2026-10-28: o dono também escolhe um entre três temas fechados, Noir, Dia e Couro, que mudam só o visual; a identidade vale também para o cliente e é lida sem login a partir do link público da barbearia.)"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -48,9 +48,9 @@ Dono, barbeiros e clientes veem o tema, o nome, o logo e as cores da barbearia: 
 3. **Given** duas barbearias com identidades diferentes, **When** usuários de cada uma entram, **Then** cada um vê apenas a identidade da própria barbearia.
 4. **Given** o dono salvou uma nova identidade, **When** os demais usuários abrem uma tela nova, **Then** já veem a mudança, sem precisar sair e entrar de novo.
 5. **Given** qualquer um dos três temas com qualquer combinação de cores da paleta, **When** a identidade é exibida, **Then** nome, logo, cores e textos continuam legíveis. O claro ou escuro é definido pelo tema (Dia é claro; Noir e Couro são escuros) e o modo do aparelho não altera as telas da barbearia.
-7. **Given** os três temas, **When** o usuário navega pelas telas, **Then** a organização das telas e das ações é a mesma em todos; mudam apenas fontes, fundo, formato e estilo dos componentes.
 6. **Given** um usuário que ainda não entrou (tela de entrar, convite e recuperação de senha), **When** a tela é aberta, **Then** ela usa a aparência padrão do produto, pois ainda não se sabe a qual barbearia ele pertence.
-8. **Given** o link público de uma barbearia, **When** uma pessoa sem conta o abre (por exemplo, um cliente que vai se cadastrar), **Then** a página mostra o tema, o nome, o logo e as cores daquela barbearia, sem exigir login.
+7. **Given** os três temas, **When** o usuário navega pelas telas, **Then** a organização das telas e das ações é a mesma em todos; mudam apenas fontes, fundo, formato e estilo dos componentes.
+8. **Given** o identificador público do link de uma barbearia, **When** a página do link (da feature de agendamento) pede a identidade sem login, **Then** recebe somente o tema, o nome, o logo e as cores daquela barbearia, o suficiente para mostrar o visual dela já na primeira tela.
 9. **Given** o link de uma barbearia que não existe ou que foi desativada, **When** alguém o abre, **Then** vê uma página neutra com a aparência padrão do produto, sem revelar dados de nenhuma barbearia.
 
 ---
@@ -196,7 +196,7 @@ O dono pode remover o logo e restaurar o tema e as cores padrão, voltando à ap
 - **SC-011**: O dono troca de tema e vê a prévia em menos de 10 segundos, e o novo tema aparece para dono, barbeiros e clientes na próxima tela que abrirem.
 - **SC-003**: 100% dos envios de logo fora de formato, tamanho ou dimensões permitidos são recusados, e o logo anterior permanece.
 - **SC-004**: Em testes automatizados de vazamento, 0 leituras ou escritas de uma barbearia alcançam a identidade de outra, e a leitura sem login retorna apenas tema, nome, logo e cores da barbearia do link.
-- **SC-012**: Ao abrir o link de uma barbearia, a pessoa vê a identidade dela já na primeira tela, sem passar antes pela aparência padrão.
+- **SC-012**: A leitura pública da identidade, feita sem login a partir do identificador do link, devolve tema, nome, logo e cores da barbearia na primeira resposta, de modo que a página do link possa mostrá-los sem passar antes pela aparência padrão. A página em si é entregue pela feature de agendamento.
 - **SC-005**: 100% das tentativas de alterar a identidade por barbeiro ou por quem não está autenticado são negadas.
 - **SC-006**: Após o dono salvar, um colega que abrir uma tela nova já vê a nova identidade, sem sair e entrar de novo.
 - **SC-007**: Em um monitor comum (1366 × 768), a tabela do Catálogo mostra ao menos 15 serviços sem rolagem, e editar um serviço não tira a lista da tela.

@@ -34,7 +34,7 @@ Contrato de referência dos endpoints desta feature. A fonte da verdade são os 
 }
 ```
 
-`logoUrl` aponta para `GET /public/barbershops/{slug}/logo?v=<versão>`; o caminho é relativo à base da API. A lista de temas e a paleta (nomes e valores) **não** vêm da API: são constantes compartilhadas de `packages/domain` e `packages/ui`, as mesmas em painel, app e testes.
+`logoUrl` aponta para `GET /public/barbershops/{slug}/logo?v=<versão>`; o caminho é relativo à base da API. Nas **respostas**, um tema ou tom que o cliente não conheça (por exemplo, um app antigo diante de um tema novo) é tratado como o padrão (`noir`, `gold`) em vez de falhar; as **entradas** continuam estritas. A lista de temas e a paleta (nomes e valores) **não** vêm da API: são constantes compartilhadas de `packages/domain` e `packages/ui`, as mesmas em painel, app e testes.
 
 ## Identidade (autenticado)
 
@@ -81,7 +81,7 @@ Passam pelo limitador de chamadas por IP da Identidade (`429 TOO_MANY_REQUESTS`)
 
 ## Registro de rotas
 
-Acréscimo a `ROUTES` (`BRANDING_ROUTES`, 6 rotas autenticadas e 2 públicas). Campos novos opcionais em `RouteDefinition`, só para documentação: `body` (`{ kind: "binary", contentTypes, maxBytes }`) e `responseBinary` (`{ contentTypes }`). `routes.spec.ts` da API continua garantindo que toda rota dos controladores está no registro com o mesmo acesso.
+Acréscimo a `ROUTES` (`BRANDING_ROUTES`, 5 rotas autenticadas e 2 públicas). Campos novos opcionais em `RouteDefinition`, só para documentação: `body` (`{ kind: "binary", contentTypes, maxBytes }`) e `responseBinary` (`{ contentTypes }`). `routes.spec.ts` da API continua garantindo que toda rota dos controladores está no registro com o mesmo acesso.
 
 ## Rotas existentes usadas pelo app do dono (sem mudança)
 

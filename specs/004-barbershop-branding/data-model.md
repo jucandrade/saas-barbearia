@@ -10,7 +10,7 @@ Datas em `timestamptz` (UTC) e chaves `uuid` (`gen_random_uuid()`), como nas fea
 |---|---|---|
 | `public_slug` (novo) | texto | `NOT NULL`, **único**, 3 a 40 caracteres, `CHECK (public_slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')` |
 
-A migration adiciona a coluna anulável, preenche as barbearias existentes (slug do nome, com sufixo numérico em colisão) e só então aplica `NOT NULL` e a unicidade. O provisionamento passa a gravar o slug. Nenhuma outra coluna nem dado muda. O `name` continua com `CHECK` de 1 a 120 caracteres; a regra de 1 a 80 desta feature vale ao **alterar** o nome (contrato e domínio). `app_runtime` ganha `UPDATE (name)` na tabela, por coluna.
+O esquema do Drizzle declara a coluna `.notNull()` (para o `db:generate` não detectar divergência) e a migration, reordenada à mão, adiciona a coluna anulável, preenche as barbearias existentes (slug do nome, com sufixo numérico em colisão) e só então aplica `NOT NULL` e a unicidade. O provisionamento passa a gravar o slug. Nenhuma outra coluna nem dado muda. O `name` continua com `CHECK` de 1 a 120 caracteres; a regra de 1 a 80 desta feature vale ao **alterar** o nome (contrato e domínio). `app_runtime` ganha `UPDATE (name)` na tabela, por coluna.
 
 ## barbershop_branding
 
