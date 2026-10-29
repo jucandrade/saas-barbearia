@@ -1,3 +1,4 @@
+import { BRANDING_ROUTES } from "./branding/routes.js";
 import { CATALOG_ROUTES } from "./catalog/routes.js";
 import { IDENTITY_ROUTES, type RouteDefinition } from "./identity/routes.js";
 
@@ -12,4 +13,5 @@ export type {
 export const ROUTES: readonly RouteDefinition[] = [
   ...IDENTITY_ROUTES,
   ...CATALOG_ROUTES,
+  ...BRANDING_ROUTES,
 ];

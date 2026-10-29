@@ -17,6 +17,8 @@ import {
 import { call, ApiResponseError } from "../lib/api";
 import { formatPrice } from "../lib/money";
 import { eraseToken, readToken } from "../lib/session";
+import { useBrand } from "../lib/branding";
+import { useCommonStyles } from "../lib/theme-styles";
 
 type State =
   | { phase: "loading" }
@@ -30,6 +32,8 @@ type State =
 /** Read-only catalog: every active service, the barber's own ones highlighted with his values. */
 export default function Catalog() {
   const router = useRouter();
+  const s = useCommonStyles();
+  const { tokens, fonts } = useBrand();
   const [state, setState] = useState<State>({ phase: "loading" });
 
   useEffect(() => {
@@ -73,15 +77,17 @@ export default function Catalog() {
 
   if (state.phase === "loading") {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
+      <View style={s.center}>
+        <ActivityIndicator color={tokens.primary} />
       </View>
     );
   }
   if (state.phase === "error") {
     return (
-      <View style={styles.center}>
-        <Text accessibilityRole="alert">{state.message}</Text>
+      <View style={s.center}>
+        <Text style={s.error} accessibilityRole="alert">
+          {state.message}
+        </Text>
       </View>
     );
   }
@@ -90,7 +96,10 @@ export default function Catalog() {
     state.services.some((s) => s.categoryId === category.id),
   );
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
+    <ScrollView
+      style={{ backgroundColor: tokens.background }}
+      contentContainerStyle={s.scroll}
+    >
       <Pressable
         onPress={() => {
           router.back();
@@ -98,13 +107,21 @@ export default function Catalog() {
         accessibilityRole="button"
         style={styles.back}
       >
-        <Text style={styles.backText}>Voltar</Text>
+        <Text style={s.link}>Voltar</Text>
       </Pressable>
-      <Text style={styles.title}>Serviços</Text>
-      {shown.length === 0 && <Text>Nenhum serviço cadastrado ainda.</Text>}
+      <Text style={s.title}>Serviços</Text>
+      {shown.length === 0 && (
+        <Text style={s.text}>Nenhum serviço cadastrado ainda.</Text>
+      )}
       {shown.map((category) => (
         <View key={category.id} style={styles.section}>
-          <Text style={styles.category} accessibilityRole="header">
+          <Text
+            style={[
+              styles.category,
+              { color: tokens.text, fontFamily: fonts.displayBold },
+            ]}
+            accessibilityRole="header"
+          >
             {category.name}
           </Text>
           {state.services
@@ -112,17 +129,24 @@ export default function Catalog() {
             .map((service) => (
               <View
                 key={service.id}
-                style={[styles.card, service.mine && styles.mine]}
+                style={[s.card, service.mine && s.cardSelected]}
               >
-                <Text style={styles.name}>{service.name}</Text>
-                <Text>
+                <Text
+                  style={[
+                    styles.name,
+                    { color: tokens.text, fontFamily: fonts.bodyBold },
+                  ]}
+                >
+                  {service.name}
+                </Text>
+                <Text style={s.text}>
                   {String(service.effective.durationMinutes)} min ·{" "}
                   {formatPrice(service.effective.priceCents)}
                 </Text>
                 {service.description !== null && (
-                  <Text style={styles.description}>{service.description}</Text>
+                  <Text style={s.muted}>{service.description}</Text>
                 )}
-                {service.mine && <Text style={styles.badge}>Você faz</Text>}
+                {service.mine && <Text style={s.badge}>Você faz</Text>}
               </View>
             ))}
         </View>
@@ -132,22 +156,8 @@ export default function Catalog() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, padding: 24, justifyContent: "center" },
-  screen: { padding: 24, gap: 8 },
   back: { minHeight: 44, justifyContent: "center" },
-  backText: { fontSize: 16, fontWeight: "600" },
-  title: { fontSize: 24, fontWeight: "700" },
+  category: { fontSize: 18 },
   section: { marginTop: 16, gap: 8 },
-  category: { fontSize: 18, fontWeight: "700" },
-  card: {
-    padding: 12,
-    gap: 2,
-    borderWidth: 1,
-    borderColor: "#cfcfd8",
-    borderRadius: 8,
-  },
-  mine: { borderColor: "#1f4fd8", borderWidth: 2 },
-  name: { fontSize: 16, fontWeight: "700" },
-  description: { color: "#5b5b66" },
-  badge: { marginTop: 4, color: "#1f4fd8", fontWeight: "700" },
+  name: { fontSize: 16 },
 });

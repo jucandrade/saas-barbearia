@@ -90,3 +90,37 @@ export async function callWithoutResponse(
     throw await errorFromResponse(response);
   }
 }
+
+interface BinaryOptions<S extends z.ZodType> {
+  /** The raw bytes to send (for example the file chosen for the logo). */
+  body: Blob;
+  /** Media type of the bytes, sent as the `Content-Type` header. */
+  contentType: string;
+  schema: S;
+}
+
+/** `PUT` of raw bytes (the logo upload); the response is validated against the contract. */
+export async function callBinary<S extends z.ZodType>(
+  path: string,
+  { body, contentType, schema }: BinaryOptions<S>,
+): Promise<z.output<S>> {
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": contentType },
+      body,
+    });
+  } catch {
+    throw new ApiResponseError(
+      0,
+      "NO_CONNECTION",
+      "Não foi possível falar com o servidor. Tente de novo.",
+    );
+  }
+  if (!response.ok) {
+    throw await errorFromResponse(response);
+  }
+  return schema.parse(await response.json());
+}

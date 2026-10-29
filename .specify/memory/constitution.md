@@ -1,5 +1,29 @@
 <!--
-Sync Impact Report
+Sync Impact Report (1.2.0, 2026-10-28)
+- Version change: 1.1.0 → 1.2.0 (MINOR: o cliente ganha um app mobile; o princípio mobile-first e o link público continuam, com novo papel)
+- Modified principles: VIII. Mobile-first e simplicidade operacional — o link público deixa de ser o único
+  canal do cliente e vira porta de entrada e alternativa ao app.
+- Added sections: none (tabela de restrições técnicas ganha o app do cliente; Glossário ganha 2 termos)
+- Removed sections: none
+- Impact: spec 004 ajustada (cliente usa o app; link público é a porta de entrada). Futura feature de
+  agendamento deve construir o app do cliente (ver ADR 0003). Specs 001-003 não são afetadas.
+- Templates: not modified (dependent templates read the constitution at runtime)
+- Follow-up TODOs: definir no plan da feature de agendamento onde o app do cliente fica no monorepo;
+  confirmar com a barbearia piloto a conta e o identificador do app atual (ADR 0003).
+
+Sync Impact Report (1.1.0, 2026-10-28)
+- Version change: 1.0.0 → 1.1.0 (MINOR: nova regra no Princípio I e novos termos no glossário)
+- Modified principles: I. Multi-tenancy obrigatório — adicionadas regras de leitura pública sem login
+  e de arquivos públicos.
+- Added sections: none (2 termos no Glossário: Tema, Identidade visual da barbearia)
+- Removed sections: none
+- Impact: spec 004 (leitura pública da identidade pelo link da barbearia, FR-029/FR-030) já está
+  em conformidade; a feature de agendamento (link público) deve seguir a mesma regra.
+  Specs 001-003 não são afetadas.
+- Templates: not modified (dependent templates read the constitution at runtime)
+- Follow-up TODOs: none
+
+Sync Impact Report (1.0.0, 2026-10-17)
 - Version change: (template, unversioned) → 1.0.0
 - Modified principles: template placeholders replaced by 10 principles:
   I. Multi-tenancy obrigatório
@@ -38,6 +62,9 @@ Este documento define os princípios inegociáveis do projeto. Toda spec, plan, 
 - A hierarquia Barbearia → Unidades existe desde a primeira migration, mesmo que a barbearia piloto tenha uma única unidade.
 - Toda assinatura nasce vinculada à unidade onde foi contratada.
 - Nenhuma query, job ou relatório pode acessar dados sem o contexto de tenant definido. Testes automatizados devem cobrir o vazamento entre tenants.
+- Leitura sem login (por exemplo, a página do link público da barbearia) só pode acontecer por uma **função ou view dedicada** que recebe o identificador público da barbearia e devolve **campos mínimos e explícitos**. É proibido abrir uma tabela para leitura anônima.
+- Todo caminho de leitura pública tem testes que provam o que um visitante anônimo consegue e o que não consegue ler, incluindo o isolamento entre barbearias.
+- Arquivos acessíveis sem login (como o logo da barbearia) ficam em armazenamento separado, que serve apenas esse conteúdo.
 
 **Racional:** o produto é SaaS desde o primeiro cliente. Corrigir isolamento depois é caro e um vazamento de dados financeiros entre barbearias é inaceitável.
 
@@ -103,7 +130,8 @@ Este documento define os princípios inegociáveis do projeto. Toda spec, plan, 
 ### VIII. Mobile-first e simplicidade operacional
 
 - Toda interface usada por cliente ou barbeiro é projetada primeiro para celular.
-- O link público de agendamento é leve, renderizado no servidor e funcional em conexões lentas.
+- O cliente usa um **app mobile na loja** (React Native com Expo), em duas modalidades com o mesmo código: app único do produto e app com marca própria da barbearia (ver ADR 0003). A barbearia é definida por configuração da build ou pelo link/QR, nunca por código.
+- O link público da barbearia é leve, renderizado no servidor e funcional em conexões lentas; serve de porta de entrada (abre o app quando instalado) e de alternativa para quem ainda não o instalou.
 - As telas são organizadas por tarefa (por exemplo: Hoje, Caixa, Equipe, Clientes), e não por listas extensas de relatórios.
 - Toda funcionalidade nova deve responder qual tarefa do dia a dia da barbearia ela simplifica.
 
@@ -138,8 +166,9 @@ Este documento define os princípios inegociáveis do projeto. Toda spec, plan, 
 | Banco de dados | PostgreSQL com Row Level Security |
 | Filas e jobs | BullMQ + Redis |
 | Admin web | Next.js |
-| Link público de agendamento | Next.js com renderização no servidor, mobile-first |
+| Link público da barbearia | Next.js com renderização no servidor, mobile-first; porta de entrada do app e alternativa web |
 | App do barbeiro | React Native com Expo |
+| App do cliente | React Native com Expo; mesmo código para o app único e para apps com marca própria (variantes por `APP_VARIANT`); localização no monorepo definida no plan da feature de agendamento |
 | Datas e horários | Armazenados em UTC; cada unidade tem fuso horário configurado; cálculos de período mensal usam o fuso da unidade |
 | Agenda | Conflito de horário impedido no banco (exclusion constraint com intervalos de tempo por barbeiro), com encaixe como exceção explícita |
 
@@ -173,6 +202,10 @@ Decisões ainda abertas, a registrar por ADR antes do plan das features que depe
 - **Política de Remuneração:** conjunto versionado de parâmetros que define como cada barbeiro é remunerado.
 - **Espelho de pagamento:** demonstrativo mensal do barbeiro gerado no fechamento do dia 05.
 - **Barbearia piloto:** primeira barbearia cliente, cujas regras definem os padrões iniciais do sistema.
+- **Identidade visual da barbearia:** tema, nome de exibição, logo e as duas cores (principal e de destaque) que a barbearia escolhe e que aparecem para dono, barbeiros e clientes.
+- **App único:** app do cliente publicado uma vez pelo produto, igual para todas as barbearias, que abre na barbearia certa por link ou QR.
+- **App com marca própria:** app do cliente com o nome e o ícone da barbearia, publicado na conta de desenvolvedor dela, com o identificador da barbearia embutido na build.
+- **Tema:** um entre três estilos visuais fechados definidos pelo produto (Noir, Dia e Couro). Muda só o visual, nunca a organização das telas.
 
 ---
 
@@ -184,4 +217,4 @@ Decisões ainda abertas, a registrar por ADR antes do plan das features que depe
 - Todo plan deve conter uma verificação explícita de conformidade com esta constitution. Violações só são aceitas com justificativa registrada na seção de complexidade do plan.
 - Revisões de código verificam a conformidade com os princípios marcados como NON-NEGOTIABLE.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-17 | **Last Amended**: 2026-10-17
+**Version**: 1.2.0 | **Ratified**: 2026-10-17 | **Last Amended**: 2026-10-28

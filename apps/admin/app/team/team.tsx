@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   InviteOutput,
   ResendOutput,
@@ -10,12 +10,27 @@ import {
   type User,
 } from "@barbearia/contracts";
 import { call, callWithoutResponse, ApiResponseError } from "../../lib/api";
+import { DataTable, type Column, type Sorting } from "../components/data-table";
+import { FilterBar } from "../components/filter-bar";
+import { SidePanel } from "../components/side-panel";
 
 const STATUS_LABEL: Record<User["status"], string> = {
   invited: "Convite pendente",
   active: "Ativo",
   deactivated: "Desativado",
 };
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "Todos" },
+  { value: "active", label: "Ativos" },
+  { value: "invited", label: "Convite pendente" },
+  { value: "deactivated", label: "Desativados" },
+] as const;
+
+const SORT_OPTIONS = [
+  { value: "name", label: "Nome" },
+  { value: "status", label: "Situação" },
+] as const;
 
 const ERROR_MESSAGES: Record<string, string> = {
   LAST_OWNER: "A barbearia precisa de pelo menos um dono ativo.",
@@ -35,6 +50,12 @@ type Load =
   | { phase: "error"; message: string }
   | { phase: "ready"; users: User[] };
 
+type Panel = { mode: "invite" } | { mode: "person"; id: string } | undefined;
+
+const roleLabel = (user: User): string =>
+  user.role === "owner" ? "Dono" : "Barbeiro";
+
+/** Team for the owner at the computer: table with filter and sorting, actions in a side panel. */
 export function Team() {
   const router = useRouter();
   const [load, setLoad] = useState<Load>({ phase: "loading" });
@@ -42,7 +63,14 @@ export function Team() {
   const [notice, setNotice] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [panel, setPanel] = useState<Panel>();
+  const [status, setStatus] = useState<"all" | User["status"]>("all");
+  const [sorting, setSorting] = useState<Sorting>({
+    key: "name",
+    direction: "asc",
+  });
 
+  const nameField = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<InviteInput["role"]>("barber");
@@ -65,6 +93,33 @@ export function Team() {
       active = false;
     };
   }, [version, router]);
+
+  const visible = useMemo(() => {
+    if (load.phase !== "ready") return [];
+    const filtered = load.users.filter(
+      (user) => status === "all" || user.status === status,
+    );
+    const sign = sorting.direction === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const byName = a.name.localeCompare(b.name, "pt-BR");
+      const order =
+        sorting.key === "status"
+          ? STATUS_LABEL[a.status].localeCompare(
+              STATUS_LABEL[b.status],
+              "pt-BR",
+            ) || byName
+          : byName;
+      return sign * order;
+    });
+  }, [load, status, sorting]);
+
+  function sortBy(key: string) {
+    setSorting((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  }
 
   async function run(action: () => Promise<string | undefined>) {
     setError(undefined);
@@ -91,6 +146,8 @@ export function Team() {
       });
       setName("");
       setEmail("");
+      // Several invitations in a row, keyboard only: back to the first field (FR-017).
+      nameField.current?.focus();
       return output.invitationSent
         ? `Convite enviado para ${output.user.email}.`
         : "O convite foi criado, mas o e-mail não pôde ser enviado. Use “Reenviar convite”.";
@@ -128,50 +185,60 @@ export function Team() {
     });
   }
 
+  const columns: Column<User>[] = [
+    { key: "name", header: "Nome", sortable: true, render: (u) => u.name },
+    { key: "email", header: "E-mail", render: (u) => u.email },
+    { key: "role", header: "Papel", render: roleLabel },
+    {
+      key: "status",
+      header: "Situação",
+      sortable: true,
+      render: (u) =>
+        u.status === "active" ? (
+          <span className="badge">{STATUS_LABEL[u.status]}</span>
+        ) : (
+          <span className="hint-inline">{STATUS_LABEL[u.status]}</span>
+        ),
+    },
+  ];
+
+  const selected =
+    panel?.mode === "person" && load.phase === "ready"
+      ? load.users.find((user) => user.id === panel.id)
+      : undefined;
+
   return (
     <>
-      <h1>Equipe</h1>
-      <p>Convide donos e barbeiros e controle quem tem acesso.</p>
-
-      <form onSubmit={invite} noValidate className="card">
-        <label htmlFor="name">Nome</label>
-        <input
-          id="name"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
+      <div className="toolbar">
+        <h1>Equipe</h1>
+        <FilterBar
+          statusLabel="Situação"
+          statusOptions={STATUS_OPTIONS}
+          status={status}
+          onStatus={(value) => {
+            setStatus(value as typeof status);
           }}
-          autoComplete="off"
+          sort={{
+            options: SORT_OPTIONS,
+            value: sorting.key,
+            direction: sorting.direction,
+            onChange: (key) => {
+              setSorting((current) => ({ ...current, key }));
+            },
+            onDirection: (direction) => {
+              setSorting((current) => ({ ...current, direction }));
+            },
+          }}
         />
-        <label htmlFor="email">E-mail</label>
-        <input
-          id="email"
-          type="email"
-          inputMode="email"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-          }}
-          autoComplete="off"
-        />
-        <label htmlFor="role">Papel</label>
-        <select
-          id="role"
-          value={role}
-          onChange={(e) => {
-            setRole(e.target.value as InviteInput["role"]);
-          }}
-        >
-          <option value="barber">Barbeiro</option>
-          <option value="owner">Dono</option>
-        </select>
         <button
-          type="submit"
-          disabled={busy || name.trim() === "" || email.trim() === ""}
+          type="button"
+          onClick={() => {
+            setPanel({ mode: "invite" });
+          }}
         >
-          Enviar convite
+          Convidar pessoa
         </button>
-      </form>
+      </div>
 
       {notice !== undefined && (
         <p role="status" className="hint">
@@ -183,63 +250,133 @@ export function Team() {
           {error}
         </p>
       )}
-
       {load.phase === "loading" && <p role="status">Carregando…</p>}
       {load.phase === "error" && (
         <p role="alert" className="error">
           {load.message}
         </p>
       )}
+
       {load.phase === "ready" && (
-        <ul className="list">
-          {load.users.map((user) => (
-            <li key={user.id} className="card">
-              <strong>{user.name}</strong>
-              <span className="hint">
-                {user.email} · {user.role === "owner" ? "Dono" : "Barbeiro"} ·{" "}
-                {STATUS_LABEL[user.status]}
-              </span>
+        <div className={panel === undefined ? "split" : "split has-panel"}>
+          <DataTable
+            caption="Pessoas da equipe"
+            columns={columns}
+            rows={visible}
+            rowKey={(user) => user.id}
+            sorting={sorting}
+            onSort={sortBy}
+            selectedKey={panel?.mode === "person" ? panel.id : undefined}
+            onSelect={(user) => {
+              setPanel({ mode: "person", id: user.id });
+            }}
+            selectLabel={(user) => `Abrir ${user.name}`}
+            emptyMessage="Ninguém com esse filtro."
+          />
+
+          {panel?.mode === "invite" && (
+            <SidePanel
+              title="Convidar pessoa"
+              onClose={() => {
+                setPanel(undefined);
+              }}
+            >
+              <form onSubmit={invite} noValidate className="card">
+                <label htmlFor="name">Nome</label>
+                <input
+                  id="name"
+                  ref={nameField}
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                  }}
+                  autoComplete="off"
+                />
+                <label htmlFor="email">E-mail</label>
+                <input
+                  id="email"
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                  }}
+                  autoComplete="off"
+                />
+                <label htmlFor="role">Papel</label>
+                <select
+                  id="role"
+                  value={role}
+                  onChange={(e) => {
+                    setRole(e.target.value as InviteInput["role"]);
+                  }}
+                >
+                  <option value="barber">Barbeiro</option>
+                  <option value="owner">Dono</option>
+                </select>
+                <button
+                  type="submit"
+                  disabled={busy || name.trim() === "" || email.trim() === ""}
+                >
+                  Enviar convite
+                </button>
+              </form>
+            </SidePanel>
+          )}
+
+          {selected !== undefined && (
+            <SidePanel
+              key={selected.id}
+              title={selected.name}
+              onClose={() => {
+                setPanel(undefined);
+              }}
+            >
+              <p className="hint">
+                {selected.email} · {roleLabel(selected)} ·{" "}
+                {STATUS_LABEL[selected.status]}
+              </p>
               <div className="actions">
-                {user.status === "invited" && (
+                {selected.status === "invited" && (
                   <button
                     type="button"
                     className="secondary"
                     disabled={busy}
                     onClick={() => {
-                      resend(user);
+                      resend(selected);
                     }}
                   >
                     Reenviar convite
                   </button>
                 )}
-                {user.status !== "deactivated" && (
+                {selected.status !== "deactivated" && (
                   <button
                     type="button"
                     className="secondary"
                     disabled={busy}
                     onClick={() => {
-                      deactivate(user);
+                      deactivate(selected);
                     }}
                   >
                     Desativar
                   </button>
                 )}
-                {user.status === "deactivated" && (
+                {selected.status === "deactivated" && (
                   <button
                     type="button"
                     className="secondary"
                     disabled={busy}
                     onClick={() => {
-                      reactivate(user);
+                      reactivate(selected);
                     }}
                   >
                     Reativar
                   </button>
                 )}
               </div>
-            </li>
-          ))}
-        </ul>
+            </SidePanel>
+          )}
+        </div>
       )}
     </>
   );

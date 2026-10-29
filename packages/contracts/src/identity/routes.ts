@@ -26,6 +26,10 @@ export interface RouteDefinition {
   /** Success status. */
   status: number;
   request?: z.ZodType;
+  /** Raw binary request body (for example an image upload); instead of `request`. */
+  body?: { kind: "binary"; contentTypes: readonly string[]; maxBytes: number };
+  /** Raw binary success response (for example an image); instead of `response`. */
+  responseBinary?: { contentTypes: readonly string[] };
   /** Success body; absent when the route answers without a body. */
   response?: z.ZodType;
   errors: readonly RouteError[];

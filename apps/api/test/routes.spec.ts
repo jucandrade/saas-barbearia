@@ -3,6 +3,9 @@ import { PATH_METADATA, METHOD_METADATA } from "@nestjs/common/constants.js";
 import { RequestMethod } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 import { ROUTES, type Access } from "@barbearia/contracts";
+import { BrandingController } from "../src/branding/branding.controller.js";
+import { PublicBrandingController } from "../src/branding/public-branding.controller.js";
+import { LogoController } from "../src/branding/logo.controller.js";
 import { CategoriesController } from "../src/catalog/categories/categories.controller.js";
 import { ExecutorsController } from "../src/catalog/executors/executors.controller.js";
 import { ServicesController } from "../src/catalog/services/services.controller.js";
@@ -21,6 +24,9 @@ const CONTROLLERS: Controller[] = [
   CategoriesController,
   ServicesController,
   ExecutorsController,
+  BrandingController,
+  LogoController,
+  PublicBrandingController,
 ];
 
 interface Found {

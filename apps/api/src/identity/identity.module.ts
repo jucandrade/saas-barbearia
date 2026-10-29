@@ -21,6 +21,7 @@ import { ErrorFilter } from "./http/error-filter.js";
 import { Clock, SystemClock } from "./clock.js";
 import { PasswordService } from "./security/password.service.js";
 import { UserDirectory } from "./directory/user-directory.js";
+import { BarbershopDirectory } from "./directory/barbershop-directory.js";
 
 /** Bounded context "Identity and Tenancy" (principle VI). */
 @Module({
@@ -49,11 +50,13 @@ import { UserDirectory } from "./directory/user-directory.js";
     TeamService,
     RecoveryService,
     UserDirectory,
+    BarbershopDirectory,
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: ErrorFilter },
   ],
   exports: [
+    ThrottlerModule,
     Clock,
     EmailPort,
     PasswordService,
@@ -61,6 +64,7 @@ import { UserDirectory } from "./directory/user-directory.js";
     AuditService,
     InvitationIssuer,
     UserDirectory,
+    BarbershopDirectory,
   ],
 })
 export class IdentityModule {}

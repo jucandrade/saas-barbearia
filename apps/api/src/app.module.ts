@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "./config/config.module.js";
+import { BrandingModule } from "./branding/branding.module.js";
 import { CatalogModule } from "./catalog/catalog.module.js";
 import { DbModule } from "./db/db.module.js";
 import { HealthModule } from "./health/health.module.js";
@@ -11,6 +12,7 @@ import { IdentityModule } from "./identity/identity.module.js";
     DbModule,
     IdentityModule,
     CatalogModule,
+    BrandingModule,
     HealthModule,
   ],
 })

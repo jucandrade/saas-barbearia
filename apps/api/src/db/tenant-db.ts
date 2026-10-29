@@ -2,7 +2,13 @@ import { Inject, Injectable } from "@nestjs/common";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import type { Pool } from "pg";
-import type { Role, UserStatus } from "@barbearia/domain";
+import type {
+  LogoType,
+  Role,
+  ThemeId,
+  ToneId,
+  UserStatus,
+} from "@barbearia/domain";
 import * as schema from "./schema/index.js";
 
 export const POOL = Symbol("POOL");
@@ -126,6 +132,64 @@ export class AuthLookups {
   }
 }
 
+export interface PublicIdentityRow {
+  name: string;
+  theme: ThemeId;
+  primaryTone: ToneId;
+  accentTone: ToneId;
+  logoVersion: string | null;
+  updatedAt: Date | null;
+}
+
+export interface PublicLogoRow {
+  content: Buffer;
+  contentType: LogoType;
+  version: string;
+}
+
+/**
+ * Reads without a session or a tenant, for the public page of a barbershop link (feature 004,
+ * R3). It only calls the two `public_get_*` functions, which return a handful of columns for
+ * one slug, and offers no other access outside RLS.
+ */
+export class PublicLookups {
+  constructor(private readonly pool: Pool) {}
+
+  async findIdentity(slug: string): Promise<PublicIdentityRow | undefined> {
+    const { rows } = await this.pool.query<{
+      name: string;
+      theme: ThemeId;
+      primary_tone: ToneId;
+      accent_tone: ToneId;
+      logo_version: string | null;
+      updated_at: Date | null;
+    }>("select * from public_get_identity($1)", [slug]);
+    const r = rows[0];
+    return r === undefined
+      ? undefined
+      : {
+          name: r.name,
+          theme: r.theme,
+          primaryTone: r.primary_tone,
+          accentTone: r.accent_tone,
+          logoVersion: r.logo_version,
+          updatedAt: r.updated_at,
+        };
+  }
+
+  async findLogo(slug: string): Promise<PublicLogoRow | undefined> {
+    const { rows } = await this.pool.query<{
+      content: Buffer;
+      content_type: LogoType;
+      version: string;
+    }>("select * from public_get_logo($1)", [slug]);
+    const r = rows[0];
+    return r === undefined
+      ? undefined
+      : { content: r.content, contentType: r.content_type, version: r.version };
+  }
+}
+
 /**
  * The only way to reach business data. Every query runs in a transaction
  * with `app.tenant_id` set; without it RLS returns zero rows
@@ -157,5 +221,10 @@ export class TenantDb {
 
   withoutTenant(): AuthLookups {
     return new AuthLookups(this.pool);
+  }
+
+  /** Public, session-less reads of the identity behind a barbershop link. */
+  publicLookups(): PublicLookups {
+    return new PublicLookups(this.pool);
   }
 }
